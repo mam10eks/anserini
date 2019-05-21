@@ -20,7 +20,9 @@ import io.anserini.analysis.EnglishStemmingAnalyzer;
 import io.anserini.analysis.TweetAnalyzer;
 import io.anserini.index.generator.TweetGenerator;
 import io.anserini.index.generator.WapoGenerator;
+import io.anserini.rerank.Reranker;
 import io.anserini.rerank.RerankerCascade;
+import io.anserini.rerank.RerankerCascadeFactory;
 import io.anserini.rerank.RerankerContext;
 import io.anserini.rerank.ScoredDocuments;
 import io.anserini.rerank.lib.AxiomReranker;
@@ -204,7 +206,7 @@ public final class SearchCollection implements Closeable {
       qc = QueryConstructor.BagOfTerms;
     }
   
-    isRerank = args.rm3 || args.axiom;
+    isRerank = args.rm3 || args.axiom || args.experimentalRerankerFactoryClass != null;
   }
 
   @Override
@@ -287,7 +289,18 @@ public final class SearchCollection implements Closeable {
           }
         }
       }
-    } else {
+    } else if (args.experimentalRerankerFactoryClass != null) {
+        RerankerCascade cascade = new RerankerCascade();
+        RerankerCascadeFactory factory = args.instantiateExperimentalRerankerFactoryClass();
+        
+        for(Reranker<?> reranker : factory.instantiateRerankersForCascade(args)) {
+            cascade.add(reranker);
+        }
+        
+        cascade.add(new ScoreTiesAdjusterReranker());
+        cascades.put("", cascade);
+    }
+    else {
       RerankerCascade cascade = new RerankerCascade();
       cascade.add(new ScoreTiesAdjusterReranker());
       cascades.put("", cascade);

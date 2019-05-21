@@ -16,8 +16,13 @@
 
 package io.anserini.search;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.spi.StringArrayOptionHandler;
+
+import io.anserini.rerank.RerankerCascadeFactory;
 
 public class SearchArgs {
   // required arguments
@@ -46,7 +51,17 @@ public class SearchArgs {
   
   @Option(name = "-skipexists", usage = "When enabled, will skip if the run file exists")
   public Boolean skipexists = false;
+  
+  @Option(name = "-experimental.args", usage = "Define a key-value map with configuration parameters for rapid prototyping. "
+  		+ "Remove experimental.args as soon as the structure is clear and those arguments can be included in the default"
+  		+ "SearchArgs. Example: -experimental.args k1=v1 -experimental.args k2=v2 will yield to a experimatalArgs map"
+  		+ "like {k1: v1, k2: v2}.")
+  public Map<String, String> experimentalArgs = new HashMap<>();
 
+  @Option(name = "-experimental.reranker.factory", usage = "Define a class that should implement io.anserini.rerank.RerankerCascadeFactory"
+  		+ "The method 'instantiateRerankersForCascade' of this class is used to determine the used reranker-cascade.")
+  public String experimentalRerankerFactoryClass = null;
+  
   @Option(name = "-searchtweets", usage = "Whether the search is against a tweet " +
       "index created by IndexCollection -collection TweetCollection")
   public Boolean searchtweets = false;
@@ -224,4 +239,14 @@ public class SearchArgs {
 
   @Option(name = "-model", metaVar = "[file]", required = false, usage = "ranklib model file")
   public String model = "";
+
+  public RerankerCascadeFactory instantiateExperimentalRerankerFactoryClass() {
+    try {
+      return (RerankerCascadeFactory) Class.forName(experimentalRerankerFactoryClass).newInstance();
+	}
+    catch (Exception e) {
+      throw new RuntimeException("Please ensure that the class '"+ experimentalRerankerFactoryClass
+        +"' defined by the argument -experimental.reranker.factory implements the interface io.anserini.rerank.RerankerCascadeFactory.", e);
+    }
+  }
 }
