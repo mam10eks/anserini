@@ -1,5 +1,5 @@
 ---
-name: car17v1.5
+name: car17v2.0
 index_command: target/appassembler/bin/IndexCollection
 index_utils_command: target/appassembler/bin/IndexUtils
 search_command: target/appassembler/bin/SearchCollection
@@ -16,21 +16,21 @@ topic_reader: Car
 input_roots:
   - /tuna1/
   - /scratch2/
-input: collections/car/paragraphCorpus.v1.5/
-index_path: indexes/lucene-index.car17v1.5.pos+docvectors+rawdocs # path to the existing index, used in regression test if `--index` option is absent
+input: collections/car/paragraphCorpus.v2.0/
+index_path: indexes/lucene-index.car17v2.0.pos+docvectors+rawdocs
 collection: CarCollection
 index_stats:
-  documents: 29678360
-  documents (non-empty): 29674409
-  total terms: 1257896158
+  documents: 29794689
+  documents (non-empty): 29791041
+  total terms: 1249740109
 topics:
   - name: "benchmarkY1test"
-    path: topics.car17v1.5.benchmarkY1test.txt
-    qrel: qrels.car17v1.5.benchmarkY1test.txt
+    path: topics.car17v2.0.benchmarkY1test.txt
+    qrel: qrels.car17v2.0.benchmarkY1test.txt
 evals:
   - command: eval/trec_eval.9.0.4/trec_eval
     params:
-      - -m map
+      - -c -m map  # -c: average over all queries in qrels - this is critical here
     separator: "\t"
     parse_index: 2
     metric: map
@@ -38,7 +38,7 @@ evals:
     can_combine: true
   - command: eval/trec_eval.9.0.4/trec_eval
     params:
-      - -m recip_rank
+      - -c -m recip_rank
     separator: "\t"
     parse_index: 2
     metric: recip_rank
@@ -50,18 +50,18 @@ models:
       - -bm25
     results:
       map:
-        - 0.1563
+        - 0.1528
       recip_rank:
-        - 0.2336
+        - 0.2294
   - name: bm25+rm3
     params:
       - -bm25
       - -rm3
     results:
       map:
-        - 0.1295
+        - 0.1270
       recip_rank:
-        - 0.1923
+        - 0.1903
   - name: bm25+ax
     params:
       - -bm25
@@ -70,26 +70,26 @@ models:
       - -axiom.deterministic
     results:
       map:
-        - 0.1358 
+        - 0.1342 
       recip_rank:
-        - 0.1949
+        - 0.1943
   - name: ql
     params:
       - -ql
     results:
       map:
-        - 0.1386
+        - 0.1353
       recip_rank:
-        - 0.2037
+        - 0.1989
   - name: ql+rm3
     params:
       - -ql
       - -rm3
     results:
       map:
-        - 0.1080
+        - 0.1065
       recip_rank:
-        - 0.1599
+        - 0.1577
   - name: ql+ax
     params:
       - -ql
@@ -98,6 +98,6 @@ models:
       - -axiom.deterministic
     results:
       map:
-        - 0.1048
+        - 0.1054
       recip_rank:
-        - 0.1524
+        - 0.1554
