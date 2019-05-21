@@ -240,10 +240,13 @@ public class SearchArgs {
   @Option(name = "-model", metaVar = "[file]", required = false, usage = "ranklib model file")
   public String model = "";
 
+  @Option(name = "-qid_queries", metaVar = "[file]", usage="query id - query mapping file")
+  public String qid_queries = "";
+
   public RerankerCascadeFactory instantiateExperimentalRerankerFactoryClass() {
     try {
       return (RerankerCascadeFactory) Class.forName(experimentalRerankerFactoryClass).newInstance();
-	}
+    }
     catch (Exception e) {
       throw new RuntimeException("Please ensure that the class '"+ experimentalRerankerFactoryClass
         +"' defined by the argument -experimental.reranker.factory implements the interface io.anserini.rerank.RerankerCascadeFactory.", e);
