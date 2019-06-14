@@ -102,6 +102,10 @@
               <id>IndexCollection</id>
             </program>
             <program>
+              <mainClass>io.anserini.ltr.RankLibCli</mainClass>
+              <id>RankLibCli</id>
+            </program>
+            <program>
               <mainClass>io.anserini.util.MapCollections</mainClass>
               <id>MapCollections</id>
             </program>
