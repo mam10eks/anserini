@@ -28,9 +28,7 @@ import io.anserini.rerank.ScoredDocuments;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.MultiFields;
 import org.apache.lucene.index.Terms;
-
 import java.io.IOException;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -47,12 +45,13 @@ public class RankLibReranker<T> implements Reranker<T> {
   private final FeatureExtractors extractors;
   private final String termsField;
 
-  private DataPoint convertToDataPoint(Document doc, RerankerContext<T> context) {
+  private DataPoint convertToDataPoint(Document doc, int docId, RerankerContext<T> context) {
     Terms terms = null;
     try {
-      terms = MultiFields.getTerms(context.getIndexSearcher().getIndexReader(), this.termsField);
+      terms = context.getIndexSearcher().getIndexReader().getTermVector(docId, this.termsField);
     } catch (IOException e) {
-      LOG.error("Unable to retrieve term vectors");
+      LOG.error("Unable to retrieve term vectors", e);
+      throw new RuntimeException(e);
     }
 
     float[] features = this.extractors.extractAll(doc, terms, context);
@@ -88,7 +87,7 @@ public class RankLibReranker<T> implements Reranker<T> {
     // So we need to construct each feature vector in string representation then
     // parse it...
     for (int i = 0; i < numResults; i++) {
-      DataPoint dp = convertToDataPoint(docs.documents[i], context);
+      DataPoint dp = convertToDataPoint(docs.documents[i], docs.ids[i], context);
       float score = (float) this.ranker.eval(dp);
       results.add(new Result(docs.documents[i], i, score, docs.ids[i]));
     }

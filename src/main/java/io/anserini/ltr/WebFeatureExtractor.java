@@ -114,7 +114,7 @@ public class WebFeatureExtractor extends BaseFeatureExtractor {
   }
 
   @Override
-  protected String getTermVectorField() {
+  public String getTermVectorField() {
     return LuceneDocumentGenerator.FIELD_BODY;
   }
 

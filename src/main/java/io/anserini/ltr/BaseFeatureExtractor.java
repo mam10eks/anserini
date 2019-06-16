@@ -53,9 +53,9 @@ abstract public class BaseFeatureExtractor<K> {
 
     abstract protected String getIdField();
 
-    abstract protected String getTermVectorField();
+    abstract public String getTermVectorField();
 
-    protected FeatureExtractors getExtractors() {
+    public FeatureExtractors getExtractors() {
       return this.customFeatureExtractors;
     }
 

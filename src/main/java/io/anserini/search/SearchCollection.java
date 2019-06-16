@@ -20,6 +20,7 @@ import io.anserini.analysis.EnglishStemmingAnalyzer;
 import io.anserini.analysis.TweetAnalyzer;
 import io.anserini.index.generator.TweetGenerator;
 import io.anserini.index.generator.WapoGenerator;
+import io.anserini.ltr.FeatureExtractorCli.FeatureExtractionArgs;
 import io.anserini.rerank.Reranker;
 import io.anserini.rerank.RerankerCascade;
 import io.anserini.rerank.RerankerCascadeFactory;
@@ -37,6 +38,8 @@ import io.anserini.search.similarity.TaggedSimilarity;
 import io.anserini.search.topicreader.NewsBackgroundLinkingTopicReader;
 import io.anserini.search.topicreader.TopicReader;
 import io.anserini.util.AnalyzerUtils;
+
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -229,7 +232,7 @@ public final class SearchCollection implements Closeable {
       qc = QueryConstructor.BagOfTerms;
     }
   
-    isRerank = args.rm3 || args.axiom || args.experimentalRerankerFactoryClass != null;
+    isRerank = args.rm3 || args.axiom || args.experimentalRerankerFactoryClass != null || StringUtils.isNotEmpty(args.model);
   }
 
   @Override
@@ -312,6 +315,11 @@ public final class SearchCollection implements Closeable {
           }
         }
       }
+    } else if (StringUtils.isNotEmpty(args.model)) {
+        RerankerCascade cascade = new RerankerCascade();
+        cascade.add(args.rankLibReranker());
+        cascade.add(new ScoreTiesAdjusterReranker());
+        cascades.put("", cascade);
     } else if (args.experimentalRerankerFactoryClass != null) {
         RerankerCascade cascade = new RerankerCascade();
         RerankerCascadeFactory factory = args.instantiateExperimentalRerankerFactoryClass();
@@ -514,18 +522,23 @@ public final class SearchCollection implements Closeable {
     return cascade.run(ScoredDocuments.fromTopDocs(rs, searcher), context);
   }
 
-  public static void main(String[] args) throws Exception {
+  public static SearchArgs parseSearchArgsOrFail(String[] args) throws CmdLineException {
     SearchArgs searchArgs = new SearchArgs();
     CmdLineParser parser = new CmdLineParser(searchArgs, ParserProperties.defaults().withUsageWidth(90));
 
     try {
       parser.parseArgument(args);
+      return searchArgs;
     } catch (CmdLineException e) {
       System.err.println(e.getMessage());
       parser.printUsage(System.err);
       System.err.println("Example: SearchCollection" + parser.printExample(OptionHandlerFilter.REQUIRED));
-      return;
+      throw e;
     }
+  }
+
+  public static void main(String[] args) throws Exception {
+    SearchArgs searchArgs = parseSearchArgsOrFail(args);
 
     final long start = System.nanoTime();
     SearchCollection searcher = new SearchCollection(searchArgs);

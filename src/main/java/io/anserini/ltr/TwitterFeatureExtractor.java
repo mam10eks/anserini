@@ -120,7 +120,7 @@ public class TwitterFeatureExtractor extends BaseFeatureExtractor<Integer> {
   }
 
   @Override
-  protected String getTermVectorField() {
+  public String getTermVectorField() {
     return TweetGenerator.FIELD_BODY;
   }
 
