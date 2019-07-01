@@ -50,7 +50,7 @@ public class IndexReaderRankLibFeatureExtractorTest extends LuceneTestCase {
 
   private Path buildTestRankLibModelFileWithContent(String content) {
     Path ret = createTempDir().resolve("ranklib-model");
-    write string to ret
+    // write string to ret
     return ret;
   }
 }
