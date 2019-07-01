@@ -16,18 +16,15 @@
 
 package io.anserini.search;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.spi.StringArrayOptionHandler;
 
-import io.anserini.ltr.BaseFeatureExtractor;
-import io.anserini.ltr.FeatureExtractorCli.FeatureExtractionArgs;
 import io.anserini.rerank.RerankerCascadeFactory;
+import io.anserini.rerank.lib.RankLibFeatureExtractor;
 import io.anserini.rerank.lib.RankLibReranker;
 
 public class SearchArgs {
@@ -254,25 +251,9 @@ public class SearchArgs {
       throw new RuntimeException("In order to use a RankLibReranker you need to specify model.");
     }
 
-    List<String> featureExtractionArgs = new ArrayList<>();
-    for(Map.Entry<String, String> experimentalArgument : experimentalArgs.entrySet()) {
-      featureExtractionArgs.add(experimentalArgument.getKey());
-      featureExtractionArgs.add(experimentalArgument.getValue());
-    }
+    RankLibFeatureExtractor<K> rankLibFeatureExtractor = RankLibFeatureExtractor.fromSearchErgs(this);
 
-    featureExtractionArgs.add("-out");
-    featureExtractionArgs.add("PSEUDO-OUT-INJECTED-IN-SEARCH-ARGS");
-    featureExtractionArgs.add("-index");
-    featureExtractionArgs.add("PSEUDO-OUT-INJECTED-IN-SEARCH-ARGS");
-    featureExtractionArgs.add("-qrel");
-    featureExtractionArgs.add("PSEUDO-QREL-INJECTED-IN-SEARCH-ARGS");
-    featureExtractionArgs.add("-topic");
-    featureExtractionArgs.add("PSEUDO-TOPIC-INJECTED-IN-SEARCH-ARGS");
-    
-
-    BaseFeatureExtractor<K> config = FeatureExtractionArgs.getFeatureExtractorForConfigurationPurposesFromProgramArgumentsOrFail(featureExtractionArgs.toArray(new String[featureExtractionArgs.size()]));
-
-    return new RankLibReranker<K>(model, config.getTermVectorField(), config.getExtractors());
+    return new RankLibReranker<K>(model, rankLibFeatureExtractor);
   }
 
   public RerankerCascadeFactory instantiateExperimentalRerankerFactoryClass() {
