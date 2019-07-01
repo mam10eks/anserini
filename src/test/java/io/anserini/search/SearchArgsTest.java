@@ -6,17 +6,14 @@ import java.util.Map;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.MockSettings;
 import org.mockito.Mockito;
-import org.mockito.invocation.Invocation;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.core.classloader.annotations.PowerMockIgnore;
 import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import io.anserini.ltr.feature.FeatureExtractors;
+import io.anserini.rerank.lib.RankLibFeatureExtractor.IndexReaderRankLibFeatureExtractor;
 import io.anserini.rerank.lib.RankLibReranker;
 
 @RunWith(PowerMockRunner.class)
@@ -87,8 +84,10 @@ public class SearchArgsTest {
     PowerMockito.whenNew(RankLibReranker.class)
       .withAnyArguments()
       .thenAnswer(invocationOnMock -> {
-        rankLibArguments.put("term-field", invocationOnMock.getArgumentAt(1, String.class));
-        rankLibArguments.put("features", invocationOnMock.getArgumentAt(2, FeatureExtractors.class));
+        IndexReaderRankLibFeatureExtractor<?> featureExtractor = invocationOnMock.getArgumentAt(1, IndexReaderRankLibFeatureExtractor.class);
+        
+        rankLibArguments.put("term-field", featureExtractor.termsField);
+        rankLibArguments.put("features", featureExtractor.extractors);
         return Mockito.mock(RankLibReranker.class);
       });
   }
