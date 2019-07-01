@@ -19,17 +19,11 @@ package io.anserini.rerank.lib;
 import ciir.umass.edu.learning.DataPoint;
 import ciir.umass.edu.learning.Ranker;
 import ciir.umass.edu.learning.RankerFactory;
-import io.anserini.ltr.BaseFeatureExtractor;
-import io.anserini.ltr.feature.FeatureExtractors;
 import io.anserini.rerank.Reranker;
 import io.anserini.rerank.RerankerContext;
 import io.anserini.rerank.Result;
 import io.anserini.rerank.ScoredDocuments;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.Terms;
-import java.io.IOException;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
@@ -38,38 +32,13 @@ import java.util.TreeSet;
  * using that
  */
 public class RankLibReranker<T> implements Reranker<T> {
-  private static final Logger LOG = LogManager.getLogger(RankLibReranker.class);
-
   private static final RankerFactory FACTORY = new RankerFactory();
   private final Ranker ranker;
-  private final FeatureExtractors extractors;
-  private final String termsField;
+  private final RankLibFeatureExtractor<T> rankLibFeatureExtractor;
 
-  private DataPoint convertToDataPoint(Document doc, int docId, RerankerContext<T> context) {
-    Terms terms = null;
-    try {
-      terms = context.getIndexSearcher().getIndexReader().getTermVector(docId, this.termsField);
-    } catch (IOException e) {
-      LOG.error("Unable to retrieve term vectors", e);
-      throw new RuntimeException(e);
-    }
-
-    float[] features = this.extractors.extractAll(doc, terms, context);
-    String rankLibEntryString = BaseFeatureExtractor.constructOutputString("0", 0, "0", features);
-    DataPoint dp = new DataPoint(rankLibEntryString);
-    return dp;
-  }
-
-  public RankLibReranker(String modelFile, String termsField, FeatureExtractors extractors) {
+  public RankLibReranker(String modelFile, RankLibFeatureExtractor<T> rankLibFeatureExtractor) {
     this.ranker = FACTORY.loadRanker(modelFile);
-    this.extractors = extractors;
-    this.termsField = termsField;
-  }
-
-  public RankLibReranker (String modelFile, String termsField, String extractorDefinition) throws Exception {
-    this.ranker = FACTORY.loadRanker(modelFile);
-    this.extractors = FeatureExtractors.loadExtractor(extractorDefinition);
-    this.termsField = termsField;
+    this.rankLibFeatureExtractor = rankLibFeatureExtractor;
   }
 
   @Override
@@ -83,11 +52,8 @@ public class RankLibReranker<T> implements Reranker<T> {
 
     SortedSet<Result> results = new TreeSet<>();
 
-    // To use the rank lib scoring models, we need to construct DataPoint objects for scoring
-    // So we need to construct each feature vector in string representation then
-    // parse it...
     for (int i = 0; i < numResults; i++) {
-      DataPoint dp = convertToDataPoint(docs.documents[i], docs.ids[i], context);
+      DataPoint dp = rankLibFeatureExtractor.convertToDataPoint(docs.documents[i], docs.ids[i], context);
       float score = (float) this.ranker.eval(dp);
       results.add(new Result(docs.documents[i], i, score, docs.ids[i]));
     }
