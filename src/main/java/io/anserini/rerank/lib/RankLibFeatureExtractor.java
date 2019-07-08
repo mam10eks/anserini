@@ -41,8 +41,8 @@ public interface RankLibFeatureExtractor<T> {
   }  
 
   public static class IndexReaderRankLibFeatureExtractor<T> implements RankLibFeatureExtractor<T> {
-    private final String termsField;
-    private final FeatureExtractors extractors;
+    public final String termsField;
+    public final FeatureExtractors extractors;
 
     public IndexReaderRankLibFeatureExtractor(String termsField, FeatureExtractors extractors) {
       this.termsField = termsField;

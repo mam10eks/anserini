@@ -18,8 +18,11 @@ limitations under the License.
 import argparse
 import time
 
-import jnius_config
-jnius_config.set_classpath('target/anserini-0.5.1-SNAPSHOT-fatjar.jar')
+# Pyjnius setup
+import sys
+sys.path += ['src/main/python']
+from pyserini.setup import configure_classpath
+configure_classpath()
 
 from jnius import autoclass
 JString = autoclass('java.lang.String')
@@ -32,7 +35,7 @@ if __name__ == '__main__':
     parser.add_argument('--index', required=True, default='', help='index path')
     parser.add_argument('--hits', default=10, help='number of hits to retrieve')
     parser.add_argument('--k1', default=0.82, help='BM25 k1 parameter')
-    parser.add_argument('--b', default=0.72, help='BM25 b parameter')
+    parser.add_argument('--b', default=0.68, help='BM25 b parameter')
     # See our MS MARCO documentation to understand how these parameter values were tuned.
     parser.add_argument('--rm3', action='store_true', default=False, help='use RM3')
     parser.add_argument('--fbTerms', default=10, type=int, help='RM3 parameter: number of expansion terms')
@@ -49,15 +52,15 @@ if __name__ == '__main__':
         print('Initializing RM3, setting fbTerms={}, fbDocs={} and originalQueryWeight={}'.format(args.fbTerms, args.fbDocs, args.originalQueryWeight))
 
     with open(args.output, 'w') as fout:
-      start_time = time.time()
-      for line_number, line in enumerate(open(args.qid_queries)):
-          qid, query = line.strip().split('\t')
-          hits = searcher.search(JString(query.encode('utf8')), int(args.hits))
-          if line_number % 10 == 0:
-              time_per_query = (time.time() - start_time) / (line_number + 1)
-              print('Retrieving query {} ({:0.3f} s/query)'.format(line_number, time_per_query))
-          for rank in range(len(hits)):
-              docno = hits[rank].docid
-              fout.write('{}\t{}\t{}\n'.format(qid, docno, rank + 1))
+        start_time = time.time()
+        for line_number, line in enumerate(open(args.qid_queries)):
+            qid, query = line.strip().split('\t')
+            hits = searcher.search(JString(query.encode('utf8')), int(args.hits))
+            if line_number % 100 == 0:
+                time_per_query = (time.time() - start_time) / (line_number + 1)
+                print('Retrieving query {} ({:0.3f} s/query)'.format(line_number, time_per_query))
+            for rank in range(len(hits)):
+                docno = hits[rank].docid
+                fout.write('{}\t{}\t{}\n'.format(qid, docno, rank + 1))
 
     print('Done!')
