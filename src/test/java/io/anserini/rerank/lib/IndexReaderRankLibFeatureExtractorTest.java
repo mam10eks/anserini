@@ -46,7 +46,6 @@ public class IndexReaderRankLibFeatureExtractorTest extends LuceneTestCase {
 	private Path buildTestIndexWithDocuments(String... documents) throws IOException {
 		Path ret = createTempDir();
 		Directory dir = FSDirectory.open(ret);
-
 		Analyzer analyzer = new EnglishAnalyzer();
 		IndexWriterConfig config = new IndexWriterConfig(analyzer);
 		config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
@@ -107,6 +106,7 @@ public class IndexReaderRankLibFeatureExtractorTest extends LuceneTestCase {
 		assertEquals("0.0 id:0 1:5.694401 2:2.0794415 3:8.0 4:1.0 5:1.0 # 0", d.toString());
 		d = irrlfe.convertToDataPoint(indexSearcher.doc(2), 2, r);
 		assertEquals("0.0 id:0 1:13.948377 2:2.0794415 3:6.0 4:6.0 5:1.0 # 0", d.toString());
-
+		
+		indexSearcher.getIndexReader().close();
 	}
 }
