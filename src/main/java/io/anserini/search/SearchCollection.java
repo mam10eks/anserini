@@ -78,6 +78,7 @@ import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.OptionHandlerFilter;
 import org.kohsuke.args4j.ParserProperties;
+import org.mockito.Mockito;
 
 import java.io.Closeable;
 import java.io.File;
@@ -114,11 +115,10 @@ import static io.anserini.index.generator.LuceneDocumentGenerator.FIELD_ID;
 * this will generate 8 runs with parallelism as 4.
  */
 public final class SearchCollection implements Closeable {
-  public static final Sort BREAK_SCORE_TIES_BY_DOCID =
-      new Sort(SortField.FIELD_SCORE, new SortField(FIELD_ID, SortField.Type.STRING_VAL));
-  public static final Sort BREAK_SCORE_TIES_BY_TWEETID =
-      new Sort(SortField.FIELD_SCORE,
-          new SortField(TweetGenerator.StatusField.ID_LONG.name, SortField.Type.LONG, true));
+  public static final Sort BREAK_SCORE_TIES_BY_DOCID = new Sort(SortField.FIELD_SCORE,
+      new SortField(FIELD_ID, SortField.Type.STRING_VAL));
+  public static final Sort BREAK_SCORE_TIES_BY_TWEETID = new Sort(SortField.FIELD_SCORE,
+      new SortField(TweetGenerator.StatusField.ID_LONG.name, SortField.Type.LONG, true));
 
   private static final Logger LOG = LogManager.getLogger(SearchCollection.class);
 
@@ -127,14 +127,14 @@ public final class SearchCollection implements Closeable {
   private final Analyzer analyzer;
   private List<TaggedSimilarity> similarities;
   private final boolean isRerank;
+
   public enum QueryConstructor {
-    BagOfTerms,
-    SequentialDependenceModel
+    BagOfTerms, SequentialDependenceModel
   }
+
   private final QueryConstructor qc;
-  
-  private final class SearcherThread<K> extends Thread {
-    final private IndexReader reader;
+
+  public class SearcherThread<K> extends Thread {
     final private IndexSearcher searcher;
     final private SortedMap<K, Map<String, String>> topics;
     final private TaggedSimilarity taggedSimilarity;
@@ -142,27 +142,35 @@ public final class SearchCollection implements Closeable {
     final private RerankerCascade cascade;
     final private String outputPath;
     final private String runTag;
-    
-    private SearcherThread(IndexReader reader, SortedMap<K, Map<String, String>> topics, TaggedSimilarity taggedSimilarity,
-                           String cascadeTag, RerankerCascade cascade, String outputPath, String runTag) throws IOException {
-      this.reader = reader;
+
+    private SearcherThread(IndexReader reader, SortedMap<K, Map<String, String>> topics,
+        TaggedSimilarity taggedSimilarity, String cascadeTag, RerankerCascade cascade, String outputPath, String runTag)
+        throws IOException {
+      this(new IndexSearcher(reader), topics, taggedSimilarity, cascadeTag, cascade, outputPath, runTag);
+    }
+
+    public SearcherThread(IndexSearcher searcher, SortedMap<K, Map<String, String>> topics,
+        TaggedSimilarity taggedSimilarity, String cascadeTag, RerankerCascade cascade, String outputPath, String runTag)
+        throws IOException {
       this.topics = topics;
       this.taggedSimilarity = taggedSimilarity;
       this.cascadeTag = cascadeTag;
       this.cascade = cascade;
       this.runTag = runTag;
       this.outputPath = outputPath;
-      this.searcher = new IndexSearcher(this.reader);
+      this.searcher = searcher;
+
       this.searcher.setSimilarity(this.taggedSimilarity.similarity);
       setName(outputPath);
     }
-    
+
     @Override
     public void run() {
       try {
         LOG.info("[Start] Ranking with similarity: " + taggedSimilarity.similarity.toString());
         final long start = System.nanoTime();
-        if (!cascadeTag.isEmpty()) LOG.info("ReRanking with: " + cascadeTag);
+        if (!cascadeTag.isEmpty())
+          LOG.info("ReRanking with: " + cascadeTag);
         PrintWriter out = new PrintWriter(Files.newBufferedWriter(Paths.get(outputPath), StandardCharsets.US_ASCII));
         for (Map.Entry<K, Map<String, String>> entry : topics.entrySet()) {
           K qid = entry.getKey();
@@ -172,18 +180,17 @@ public final class SearchCollection implements Closeable {
             docs = searchTweets(this.searcher, qid, queryString, Long.parseLong(entry.getValue().get("time")), cascade);
           } else if (args.searchnewsbackground) {
             docs = searchBackgroundLinking(this.searcher, qid, queryString, cascade);
-          } else{
+          } else {
             docs = search(this.searcher, qid, queryString, cascade);
           }
-    
-          /**
-           * the first column is the topic number.
-           * the second column is currently unused and should always be "Q0".
-           * the third column is the official document identifier of the retrieved document.
-           * the fourth column is the rank the document is retrieved.
-           * the fifth column shows the score (integer or floating point) that generated the ranking.
-           * the sixth column is called the "run tag" and should be a unique identifier for your
-           */
+
+//        the first column is the topic number.
+//        the second column is currently unused and should always be "Q0".
+//        the third column is the official document identifier of the retrieved document.
+//        the fourth column is the rank the document is retrieved.
+//        the fifth column shows the score (integer or floating point) that generated the ranking.
+//        the sixth column is called the "run tag" and should be a unique identifier for your
+
           for (int i = 0; i < docs.documents.length; i++) {
             out.println(String.format(Locale.US, "%s Q0 %s %d %f %s", qid,
                 docs.documents[i].getField(FIELD_ID).stringValue(), (i + 1), docs.scores[i], runTag));
@@ -208,21 +215,22 @@ public final class SearchCollection implements Closeable {
     if (!Files.exists(indexPath) || !Files.isDirectory(indexPath) || !Files.isReadable(indexPath)) {
       throw new IllegalArgumentException(args.index + " does not exist or is not a directory.");
     }
-
-    LOG.info("Reading index at " + indexPath);
-    if (args.inmem) {
-      this.reader = DirectoryReader.open(MMapDirectory.open(indexPath));
-    } else {
-      this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
-    }
+    this.reader = null;
+//    Temporary
+//    LOG.info("Reading index at " + indexPath);
+//    if (args.inmem) {
+//      this.reader = DirectoryReader.open(MMapDirectory.open(indexPath));
+//    } else {
+//      this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
+//    }
 
     // Are we searching tweets?
     if (args.searchtweets) {
       LOG.info("Search Tweets");
       analyzer = new TweetAnalyzer();
     } else {
-      analyzer = args.keepstop ?
-          new EnglishStemmingAnalyzer(args.stemmer, CharArraySet.EMPTY_SET) : new EnglishStemmingAnalyzer(args.stemmer);
+      analyzer = args.keepstop ? new EnglishStemmingAnalyzer(args.stemmer, CharArraySet.EMPTY_SET)
+          : new EnglishStemmingAnalyzer(args.stemmer);
     }
 
     if (args.sdm) {
@@ -232,54 +240,61 @@ public final class SearchCollection implements Closeable {
       LOG.info("Use Bag of Terms query");
       qc = QueryConstructor.BagOfTerms;
     }
-  
-    isRerank = args.rm3 || args.axiom || args.experimentalRerankerFactoryClass != null || StringUtils.isNotEmpty(args.model);
+
+    isRerank = args.rm3 || args.axiom || args.experimentalRerankerFactoryClass != null
+        || StringUtils.isNotEmpty(args.model);
   }
 
   @Override
   public void close() throws IOException {
     reader.close();
   }
-  
+
   public List<TaggedSimilarity> constructSimiliries() {
     // Figure out which scoring model to use.
     List<TaggedSimilarity> similarities = new ArrayList<>();
     if (args.ql || args.qld) {
       for (String mu : args.mu) {
-        similarities.add(new TaggedSimilarity(new LMDirichletSimilarity(Float.valueOf(mu)), "mu="+mu));
+        similarities.add(new TaggedSimilarity(new LMDirichletSimilarity(Float.valueOf(mu)), "mu=" + mu));
       }
     } else if (args.qljm) {
       for (String lambda : args.qljm_lambda) {
-        similarities.add(new TaggedSimilarity(new LMJelinekMercerSimilarity(Float.valueOf(lambda)), "lambda=" + lambda));
+        similarities
+            .add(new TaggedSimilarity(new LMJelinekMercerSimilarity(Float.valueOf(lambda)), "lambda=" + lambda));
       }
     } else if (args.bm25) {
       for (String k1 : args.k1) {
         for (String b : args.b) {
-          similarities.add(new TaggedSimilarity(new BM25Similarity(Float.valueOf(k1), Float.valueOf(b)), "k1="+k1+",b="+b));
+          similarities.add(
+              new TaggedSimilarity(new BM25Similarity(Float.valueOf(k1), Float.valueOf(b)), "k1=" + k1 + ",b=" + b));
         }
       }
     } else if (args.inl2) {
       for (String c : args.inl2_c) {
-        similarities.add(new TaggedSimilarity(new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(Float.valueOf(c))), "c:"+c));
-      };
+        similarities.add(new TaggedSimilarity(
+            new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(Float.valueOf(c))),
+            "c:" + c));
+      }
+      ;
     } else if (args.spl) {
       for (String c : args.spl_c) {
-        similarities.add(new TaggedSimilarity(new IBSimilarity(new DistributionSPL(), new LambdaDF(),  new NormalizationH2(Float.valueOf(c))), "c="+c));
+        similarities.add(new TaggedSimilarity(
+            new IBSimilarity(new DistributionSPL(), new LambdaDF(), new NormalizationH2(Float.valueOf(c))), "c=" + c));
       }
     } else if (args.f2exp) {
       for (String s : args.f2exp_s) {
-        similarities.add(new TaggedSimilarity(new AxiomaticF2EXP(Float.valueOf(s)), "s:"+s));
+        similarities.add(new TaggedSimilarity(new AxiomaticF2EXP(Float.valueOf(s)), "s:" + s));
       }
     } else if (args.f2log) {
       for (String s : args.f2log_s) {
-        similarities.add(new TaggedSimilarity(new AxiomaticF2LOG(Float.valueOf(s)), "s:"+s));
+        similarities.add(new TaggedSimilarity(new AxiomaticF2LOG(Float.valueOf(s)), "s:" + s));
       }
     } else {
       throw new IllegalArgumentException("Error: Must specify scoring model!");
     }
     return similarities;
   }
-  
+
   public Map<String, RerankerCascade> constructRerankerCascades() throws IOException {
     Map<String, RerankerCascade> cascades = new HashMap<>();
     // Set up the ranking cascade.
@@ -289,10 +304,11 @@ public final class SearchCollection implements Closeable {
         for (String fbDocs : args.rm3_fbDocs) {
           for (String originalQueryWeight : args.rm3_originalQueryWeight) {
             RerankerCascade cascade = new RerankerCascade();
-            cascade.add(new Rm3Reranker(analyzer, FIELD_BODY, Integer.valueOf(fbTerms),
-                Integer.valueOf(fbDocs), Float.valueOf(originalQueryWeight), args.rm3_outputQuery));
+            cascade.add(new Rm3Reranker(analyzer, FIELD_BODY, Integer.valueOf(fbTerms), Integer.valueOf(fbDocs),
+                Float.valueOf(originalQueryWeight), args.rm3_outputQuery));
             cascade.add(new ScoreTiesAdjusterReranker());
-            String tag = "rm3.fbTerms:"+fbTerms+",rm3.fbDocs:"+fbDocs+",rm3.originalQueryWeight:"+originalQueryWeight;
+            String tag = "rm3.fbTerms:" + fbTerms + ",rm3.fbDocs:" + fbDocs + ",rm3.originalQueryWeight:"
+                + originalQueryWeight;
             cascades.put(tag, cascade);
           }
         }
@@ -304,12 +320,12 @@ public final class SearchCollection implements Closeable {
             for (String top : args.axiom_top) {
               for (String seed : args.axiom_seed) {
                 RerankerCascade cascade = new RerankerCascade();
-                cascade.add(new AxiomReranker(args.index, args.axiom_index, FIELD_BODY,
-                    args.axiom_deterministic, Integer.valueOf(seed), Integer.valueOf(r),
-                    Integer.valueOf(n), Float.valueOf(beta), Integer.valueOf(top),
-                    args.axiom_docids, args.axiom_outputQuery, args.searchtweets));
+                cascade.add(new AxiomReranker(args.index, args.axiom_index, FIELD_BODY, args.axiom_deterministic,
+                    Integer.valueOf(seed), Integer.valueOf(r), Integer.valueOf(n), Float.valueOf(beta),
+                    Integer.valueOf(top), args.axiom_docids, args.axiom_outputQuery, args.searchtweets));
                 cascade.add(new ScoreTiesAdjusterReranker());
-                String tag = "axiom.seed:"+seed+",axiom.r:"+r+",axiom.n:"+n+",axiom.beta:"+beta+",axiom.top:"+top;
+                String tag = "axiom.seed:" + seed + ",axiom.r:" + r + ",axiom.n:" + n + ",axiom.beta:" + beta
+                    + ",axiom.top:" + top;
                 cascades.put(tag, cascade);
               }
             }
@@ -317,38 +333,38 @@ public final class SearchCollection implements Closeable {
         }
       }
     } else if (StringUtils.isNotEmpty(args.model)) {
-        RerankerCascade cascade = new RerankerCascade();
-        cascade.add(args.rankLibReranker());
-        cascade.add(new ScoreTiesAdjusterReranker());
-        cascades.put("", cascade);
+      RerankerCascade cascade = new RerankerCascade();
+      cascade.add(args.rankLibReranker());
+      cascade.add(new ScoreTiesAdjusterReranker());
+      cascades.put("", cascade);
     } else if (args.experimentalRerankerFactoryClass != null) {
-        RerankerCascade cascade = new RerankerCascade();
-        RerankerCascadeFactory factory = args.instantiateExperimentalRerankerFactoryClass();
-        
-        for(Reranker<?> reranker : factory.instantiateRerankersForCascade(args)) {
-            cascade.add(reranker);
-        }
-        
-        cascade.add(new ScoreTiesAdjusterReranker());
-        cascades.put("", cascade);
-    }
-    else {
+      RerankerCascade cascade = new RerankerCascade();
+      RerankerCascadeFactory factory = args.instantiateExperimentalRerankerFactoryClass();
+
+      for (Reranker<?> reranker : factory.instantiateRerankersForCascade(args)) {
+        cascade.add(reranker);
+      }
+
+      cascade.add(new ScoreTiesAdjusterReranker());
+      cascades.put("", cascade);
+    } else {
       RerankerCascade cascade = new RerankerCascade();
       cascade.add(new ScoreTiesAdjusterReranker());
       cascades.put("", cascade);
     }
-    
+
     return cascades;
   }
 
   @SuppressWarnings("unchecked")
-  public<K> void runTopics() throws IOException {
+  public <K> void runTopics() throws IOException {
     TopicReader<K> tr;
     SortedMap<K, Map<String, String>> topics = new TreeMap<>();
     for (String singleTopicsFile : args.topics) {
       Path topicsFilePath = Paths.get(singleTopicsFile);
       if (!Files.exists(topicsFilePath) || !Files.isRegularFile(topicsFilePath) || !Files.isReadable(topicsFilePath)) {
-        throw new IllegalArgumentException("Topics file : " + topicsFilePath + " does not exist or is not a (readable) file.");
+        throw new IllegalArgumentException(
+            "Topics file : " + topicsFilePath + " does not exist or is not a (readable) file.");
       }
       try {
         tr = (TopicReader<K>) Class.forName("io.anserini.search.topicreader." + args.topicReader + "TopicReader")
@@ -358,17 +374,18 @@ public final class SearchCollection implements Closeable {
         throw new IllegalArgumentException("Unable to load topic reader: " + args.topicReader);
       }
     }
-  
+
     final String runTag = args.runtag == null ? "Anserini" : args.runtag;
     final ThreadPoolExecutor executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(args.threads);
     this.similarities = constructSimiliries();
     Map<String, RerankerCascade> cascades = constructRerankerCascades();
     for (TaggedSimilarity taggedSimilarity : this.similarities) {
       for (Map.Entry<String, RerankerCascade> cascade : cascades.entrySet()) {
-        final String outputPath = (this.similarities.size()+cascades.size())>2 ?
-            args.output+"_"+ taggedSimilarity.tag+(cascade.getKey().isEmpty()?"":",")+cascade.getKey() : args.output;
+        final String outputPath = (this.similarities.size() + cascades.size()) > 2
+            ? args.output + "_" + taggedSimilarity.tag + (cascade.getKey().isEmpty() ? "" : ",") + cascade.getKey()
+            : args.output;
         if (args.skipexists && new File(outputPath).exists()) {
-          LOG.info("Skipping True: "+outputPath);
+          LOG.info("Skipping True: " + outputPath);
           continue;
         }
         executor.execute(new SearcherThread<K>(reader, topics, taggedSimilarity, cascade.getKey(), cascade.getValue(),
@@ -378,7 +395,8 @@ public final class SearchCollection implements Closeable {
     executor.shutdown();
     try {
       // Wait for existing tasks to terminate
-      while (!executor.awaitTermination(1, TimeUnit.MINUTES)) {}
+      while (!executor.awaitTermination(1, TimeUnit.MINUTES)) {
+      }
     } catch (InterruptedException ie) {
       // (Re-)Cancel if current thread also interrupted
       executor.shutdownNow();
@@ -386,17 +404,18 @@ public final class SearchCollection implements Closeable {
       Thread.currentThread().interrupt();
     }
   }
-  
-  public<K> ScoredDocuments search(IndexSearcher searcher, K qid, String queryString, RerankerCascade cascade)
+
+  public <K> ScoredDocuments search(IndexSearcher searcher, K qid, String queryString, RerankerCascade cascade)
       throws IOException {
     Query query = null;
     if (qc == QueryConstructor.SequentialDependenceModel) {
-      query = new SdmQueryGenerator(args.sdm_tw, args.sdm_ow, args.sdm_uw).buildQuery(FIELD_BODY, analyzer, queryString);
+      query = new SdmQueryGenerator(args.sdm_tw, args.sdm_ow, args.sdm_uw).buildQuery(FIELD_BODY, analyzer,
+          queryString);
     } else {
       query = new BagOfWordsQueryGenerator().buildQuery(FIELD_BODY, analyzer, queryString);
     }
 
-    TopDocs rs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[]{});
+    TopDocs rs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[] {});
     if (!(isRerank && args.rerankcutoff <= 0)) {
       if (args.arbitraryScoreTieBreak) {// Figure out how to break the scoring ties.
         rs = searcher.search(query, isRerank ? args.rerankcutoff : args.hits);
@@ -410,9 +429,9 @@ public final class SearchCollection implements Closeable {
 
     return cascade.run(ScoredDocuments.fromTopDocs(rs, searcher), context);
   }
-  
-  public<K> ScoredDocuments searchBackgroundLinking(IndexSearcher searcher, K qid, String queryString, RerankerCascade cascade)
-      throws IOException, QueryNodeException {
+
+  public <K> ScoredDocuments searchBackgroundLinking(IndexSearcher searcher, K qid, String queryString,
+      RerankerCascade cascade) throws IOException, QueryNodeException {
     Query query = null;
     String queryDocID = null;
     if (qc == QueryConstructor.SequentialDependenceModel) {
@@ -431,7 +450,8 @@ public final class SearchCollection implements Closeable {
         // Because the actual query strings are extracted from tokenized document!!!
         q = new StandardQueryParser().parse(queryStr, FIELD_BODY);
       }
-      Query filter = new TermInSetQuery(WapoGenerator.WapoField.KICKER.name, new BytesRef("Opinions"), new BytesRef("Letters to the Editor"), new BytesRef("The Post's View")
+      Query filter = new TermInSetQuery(WapoGenerator.WapoField.KICKER.name, new BytesRef("Opinions"),
+          new BytesRef("Letters to the Editor"), new BytesRef("The Post's View")
 //          new Term(WapoGenerator.WapoField.KICKER.name, "Opinions"),
 //          new Term(WapoGenerator.WapoField.KICKER.name, "Letters to the Editor"),
 //          new Term(WapoGenerator.WapoField.KICKER.name, "The Post's View")
@@ -440,8 +460,8 @@ public final class SearchCollection implements Closeable {
       builder.add(filter, BooleanClause.Occur.MUST_NOT);
       builder.add(q, BooleanClause.Occur.MUST);
       query = builder.build();
-      
-      TopDocs rs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[]{});
+
+      TopDocs rs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[] {});
       if (!(isRerank && args.rerankcutoff <= 0)) {
         if (args.arbitraryScoreTieBreak) {// Figure out how to break the scoring ties.
           rs = searcher.search(query, isRerank ? args.rerankcutoff : args.hits);
@@ -449,13 +469,14 @@ public final class SearchCollection implements Closeable {
           rs = searcher.search(query, isRerank ? args.rerankcutoff : args.hits, BREAK_SCORE_TIES_BY_DOCID, true);
         }
       }
-      
+
       List<String> queryTokens = Arrays.asList(queryStr.split(" "));
-      RerankerContext context = new RerankerContext<>(searcher, qid, query, queryDocID, queryStr, queryTokens, null, args);
-  
+      RerankerContext context = new RerankerContext<>(searcher, qid, query, queryDocID, queryStr, queryTokens, null,
+          args);
+
       allRes.add(cascade.run(ScoredDocuments.fromTopDocs(rs, searcher), context));
     }
-    
+
     // Finally do a round-robin picking
     int totalSize = 0;
     float[] scoresOfFirst = new float[allRes.size()];
@@ -464,36 +485,38 @@ public final class SearchCollection implements Closeable {
       scoresOfFirst[i] = allRes.get(i).scores.length > 0 ? allRes.get(i).scores[0] : Float.NEGATIVE_INFINITY;
     }
     totalSize = Math.min(args.hits, totalSize);
-  
+
     ScoredDocuments scoredDocs = new ScoredDocuments();
     scoredDocs.documents = new Document[totalSize];
     scoredDocs.ids = new int[totalSize];
     scoredDocs.scores = new float[totalSize];
-  
+
     int rowIdx = 0;
     int idx = 0;
-    while(idx < totalSize) {
-      for(int i = 0; i < allRes.size(); i++) {
+    while (idx < totalSize) {
+      for (int i = 0; i < allRes.size(); i++) {
         if (rowIdx < allRes.get(i).documents.length) {
           scoredDocs.documents[idx] = allRes.get(i).documents[rowIdx];
           scoredDocs.ids[idx] = allRes.get(i).ids[rowIdx];
-          scoredDocs.scores[idx] = args.hits-idx;
+          scoredDocs.scores[idx] = args.hits - idx;
           idx++;
         }
       }
       rowIdx++;
     }
-  
+
     NewsBackgroundLinkingReranker postProcessor = new NewsBackgroundLinkingReranker();
     RerankerContext context = new RerankerContext<>(searcher, qid, null, queryDocID, null, null, null, args);
     scoredDocs = postProcessor.rerank(scoredDocs, context);
     return scoredDocs;
   }
 
-  public<K> ScoredDocuments searchTweets(IndexSearcher searcher, K qid, String queryString, long t, RerankerCascade cascade) throws IOException {
+  public <K> ScoredDocuments searchTweets(IndexSearcher searcher, K qid, String queryString, long t,
+      RerankerCascade cascade) throws IOException {
     Query keywordQuery;
     if (qc == QueryConstructor.SequentialDependenceModel) {
-      keywordQuery = new SdmQueryGenerator(args.sdm_tw, args.sdm_ow, args.sdm_uw).buildQuery(FIELD_BODY, analyzer, queryString);
+      keywordQuery = new SdmQueryGenerator(args.sdm_tw, args.sdm_ow, args.sdm_uw).buildQuery(FIELD_BODY, analyzer,
+          queryString);
     } else {
       keywordQuery = new BagOfWordsQueryGenerator().buildQuery(FIELD_BODY, analyzer, queryString);
     }
@@ -508,17 +531,18 @@ public final class SearchCollection implements Closeable {
     builder.add(keywordQuery, BooleanClause.Occur.MUST);
     Query compositeQuery = builder.build();
 
-
-    TopDocs rs = new TopDocs(new TotalHits(0,TotalHits.Relation.EQUAL_TO), new ScoreDoc[]{});
+    TopDocs rs = new TopDocs(new TotalHits(0, TotalHits.Relation.EQUAL_TO), new ScoreDoc[] {});
     if (!(isRerank && args.rerankcutoff <= 0)) {
       if (args.arbitraryScoreTieBreak) {// Figure out how to break the scoring ties.
         rs = searcher.search(compositeQuery, isRerank ? args.rerankcutoff : args.hits);
       } else {
-        rs = searcher.search(compositeQuery, isRerank ? args.rerankcutoff : args.hits, BREAK_SCORE_TIES_BY_TWEETID, true);
+        rs = searcher.search(compositeQuery, isRerank ? args.rerankcutoff : args.hits, BREAK_SCORE_TIES_BY_TWEETID,
+            true);
       }
     }
 
-    RerankerContext context = new RerankerContext<>(searcher, qid, keywordQuery, null, queryString, queryTokens, filter, args);
+    RerankerContext context = new RerankerContext<>(searcher, qid, keywordQuery, null, queryString, queryTokens, filter,
+        args);
 
     return cascade.run(ScoredDocuments.fromTopDocs(rs, searcher), context);
   }
