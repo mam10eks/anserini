@@ -214,9 +214,7 @@ public final class SearchCollection implements Closeable {
 
     if (!Files.exists(indexPath) || !Files.isDirectory(indexPath) || !Files.isReadable(indexPath)) {
       throw new IllegalArgumentException(args.index + " does not exist or is not a directory.");
-    }
-    this.reader = null;
-//    Temporary
+    }this.reader = null;
 //    LOG.info("Reading index at " + indexPath);
 //    if (args.inmem) {
 //      this.reader = DirectoryReader.open(MMapDirectory.open(indexPath));
