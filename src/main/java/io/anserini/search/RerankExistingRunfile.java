@@ -24,6 +24,11 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.TotalHits.Relation;
+import org.kohsuke.args4j.CmdLineException;
+import org.kohsuke.args4j.CmdLineParser;
+import org.kohsuke.args4j.Option;
+import org.kohsuke.args4j.OptionHandlerFilter;
+import org.kohsuke.args4j.ParserProperties;
 import org.mockito.Matchers;
 import org.mockito.Mockito;
 
@@ -39,23 +44,20 @@ import io.anserini.search.topicreader.TopicReader;
 
 public class RerankExistingRunfile {
 
-  public static void main(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException, CmdLineException {
     IndexSearcher mocked = Mockito.mock(IndexSearcher.class);
+
+    String[] fakeIndexArgs = new String[args.length + 2];
+    System.arraycopy(args, 0, fakeIndexArgs, 0, args.length);
+    fakeIndexArgs[args.length] = "-index";
+    fakeIndexArgs[args.length+1] = "";
+    RerankerSearchArgs sargs = parseRerankerSearchArgsOrFail(fakeIndexArgs);
 
     RankingResults rr = new RankingResults(new TreeMap<String, List<ResultDoc>>());
     Map<String, List<ResultDoc>> run = rr.readResultsFile(
-        "/home/lukas/git/TREC-combining-all-results/data/trec-19-web-run-files/trec19/web/input.blv79y00prob.gz", false,
+        sargs.runFileToRerank, false,
         false);
-
-    SearchArgs sargs = new SearchArgs();
-    sargs.index = "";
-    sargs.topics = new String[] {
-        "/home/lukas/git/TREC-combining-all-results/third-party/anserini/src/main/resources/topics-and-qrels/topics.51-100.txt" };
-    sargs.output = "";
-    sargs.topicReader = "Trec";
-    sargs.bm25 = true;
-    sargs.arbitraryScoreTieBreak = true;
-
+    
     @SuppressWarnings("resource")
     SearchCollection s = new SearchCollection(sargs);
     SortedMap<Object, Map<String, String>> topics = readTopicFiles(sargs);
@@ -81,21 +83,19 @@ public class RerankExistingRunfile {
           Field.Store.YES));
       return doc;
     });
-//  die alphanumerischen docids -> Set -> List -> numerische docid
-//  return new Document(IDCONST=alphanumerische docid);
 
     List<TaggedSimilarity> similarities = s.constructSimiliries();
     Map<String, RerankerCascade> cascades = s.constructRerankerCascades();
     System.out.println(cascades.values().iterator().next());
     System.out.println(similarities);
     SearcherThread<Object> k = s.new SearcherThread<Object>(mocked, topics, similarities.get(0), "cascadeTag",
-        cascades.values().iterator().next(), "outputPath", "runTag");
+        cascades.values().iterator().next(), sargs.output , sargs.runtag);
 
     k.run();
   }
 
   public static TopDocs search(Query query, int n, Map<Object, List<ResultDoc>> run, ArrayList<String> docid_lookup) {
-    List<ResultDoc> results = run.get(query);
+    List<ResultDoc> results = run.getOrDefault(query,new ArrayList<>());
     int len = Math.min(results.size(), n);
     ScoreDoc[] scoreDocs = new ScoreDoc[len];
     for (int i = 0; i < len; i++) {
@@ -124,4 +124,23 @@ public class RerankExistingRunfile {
     }
     return topics;
   }
+  public static RerankerSearchArgs parseRerankerSearchArgsOrFail(String[] args) throws CmdLineException {
+    RerankerSearchArgs searchArgs = new RerankerSearchArgs();
+    CmdLineParser parser = new CmdLineParser(searchArgs, ParserProperties.defaults().withUsageWidth(90));
+
+    try {
+      parser.parseArgument(args);
+      return searchArgs;
+    } catch (CmdLineException e) {
+      System.err.println(e.getMessage());
+      parser.printUsage(System.err);
+      System.err.println("Example: RerankExistingRunfile" + parser.printExample(OptionHandlerFilter.REQUIRED));
+      throw e;
+    }
+  }
+}
+
+class RerankerSearchArgs extends SearchArgs{
+  @Option(name = "-runFileToRerank", metaVar = "[path]", required = true, usage = "Path to a runfile that you want to rerank")
+  public String runFileToRerank;
 }
