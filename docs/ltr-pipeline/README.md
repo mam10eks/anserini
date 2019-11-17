@@ -6,10 +6,10 @@ We have a run file `sample-run-file.txt`, a qrel file `sample-qrels.txt`, and ha
 
 Compile Anserini:
 ```
-mvn -Dmaven.javadoc.skip=true -DskipTests -Dgpg.skip -f ../../pom.xml clean package appassembler:assemble install
+mvn -Dmaven.javadoc.skip=true -Dgpg.skip -f ../../pom.xml clean package appassembler:assemble install
 ```
 
-We can calculate some evaluation measures of the initial run file:
+We can calculate some evaluation measures on the initial run file:
 ```
 ../../target/appassembler/bin/Eval -qrels sample-qrels.txt -run sample-run-file.txt 
 num_ret               	all	58
@@ -39,12 +39,12 @@ Now we can use the `listNetModel` to rerank the run file `sample-run-file.txt`:
 ../../target/appassembler/bin/RerankExistingRunfile -output reranked-with-list-net-model.txt -runFileToRerank sample-run-file.txt -topicreader Trec -topics sample-topic.txt -bm25 -arbitraryScoreTieBreak -model listNetModel -experimental.args -rankLibFeatureVectorFile=sample-million-query-2008.fv -runtag rerankedWithListNet
 ```
 
-Evaluate `reranked-with-list-net-model` and obtain results worse than the initial ranking:
+Evaluate `reranked-with-list-net-model`:
 ```
 ../../target/appassembler/bin/Eval -qrels sample-qrels.txt -run reranked-with-list-net-model.txt
 ```
 
-
+If you repeat this process (train, rerank, and eval), you sometimes obtain results worse than the initial ranking.
 
 ## Example with Mart
 
