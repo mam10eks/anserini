@@ -86,12 +86,12 @@ public interface RankLibFeatureExtractor<T> {
     public FeatureVectorFileRankLibFeatureExtractor(File featureVectorFile){
       this(readFeatureVectors(featureVectorFile));
     }
-    
+
     public FeatureVectorFileRankLibFeatureExtractor(List<String> featureVectors) {
       topicToDocumentToFeatureVector = new HashMap<>();
 
       for (String featureVector : featureVectors) {
-        if (shouldSkipLine(featureVector)) {
+        if (shouldSkip(featureVector)) {
           continue;
         }
 
@@ -110,10 +110,10 @@ public interface RankLibFeatureExtractor<T> {
 
     private String extractDocID(String featureVector) {
       String comment = StringUtils.substringAfter(featureVector, "#");
-      if(comment.contains("docid = ")) {
+      if (comment.contains("docid = ")) {
         return StringUtils.substringBetween(comment, "docid = ", " ");
       }
-      
+
       return comment;
     }
 
@@ -121,7 +121,7 @@ public interface RankLibFeatureExtractor<T> {
       return StringUtils.substringBetween(featureVector, "qid:", " ");
     }
 
-    private boolean shouldSkipLine(String featureVector) {
+    private boolean shouldSkip(String featureVector) {
       featureVector = featureVector.trim();
       return featureVector.isEmpty() || featureVector.startsWith("#");
     }
@@ -144,9 +144,10 @@ public interface RankLibFeatureExtractor<T> {
         throw new RuntimeException("Feature vector file is missing the qid: "+ queryId);
       }
       if(!topicToDocumentToFeatureVector.get(queryId).containsKey(documentId)) {
-          throw new RuntimeException("Feature vector file has no document '"+ documentId +"' for query '"+ context.getQueryId() +"'.");    	  
+        throw new RuntimeException(
+            "Feature vector file has no document '" + documentId + "' for query '" + context.getQueryId() + "'.");
       }
-      
+
       return topicToDocumentToFeatureVector.get(queryId).get(documentId);
     }
   }
