@@ -3,6 +3,7 @@ package io.anserini.search;
 import static org.junit.Assert.assertEquals;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -20,7 +21,7 @@ public class RerankExistingRunfileTest {
   public void testRerankExistingRunfile() throws IOException, CmdLineException {
     Path runPath = Files.createTempFile("aus", "");
     RerankExistingRunfile.main(PROGRAM_ARGS_WITH_DESCENDING_CLICK_RERANKER(runPath));
-    String runfileContend = Files.readString(runPath);
+    String runfileContend = new String(Files.readAllBytes(runPath), StandardCharsets.UTF_8);
     String expected = "51 Q0 clueweb09-en0011-41-17287 1 2.000000 runTag\n"
         + "52 Q0 clueweb09-en0011-72-16411 1 1.000000 runTag\n" + "53 Q0 clueweb09-en0006-14-40112 1 5.997700 runTag\n"
         + "53 Q0 clueweb09-en0007-69-07526 2 5.997500 runTag\n" + "55 Q0 clueweb09-en0007-73-31430 1 0.997900 runTag\n"
