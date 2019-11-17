@@ -82,12 +82,12 @@ public interface RankLibFeatureExtractor<T> {
     public FeatureVectorFileRankLibFeatureExtractor(File featureVectorFile) throws IOException {
       this(Files.readAllLines(featureVectorFile.toPath()));
     }
-    
+
     public FeatureVectorFileRankLibFeatureExtractor(List<String> featureVectors) {
       topicToDocumentToFeatureVector = new HashMap<>();
 
       for (String featureVector : featureVectors) {
-        if (shouldSkipLine(featureVector)) {
+        if (shouldSkip(featureVector)) {
           continue;
         }
 
@@ -106,10 +106,10 @@ public interface RankLibFeatureExtractor<T> {
 
     private String extractDocID(String featureVector) {
       String comment = StringUtils.substringAfter(featureVector, "#");
-      if(comment.contains("docid = ")) {
+      if (comment.contains("docid = ")) {
         return StringUtils.substringBetween(comment, "docid = ", " ");
       }
-      
+
       return comment;
     }
 
@@ -117,7 +117,7 @@ public interface RankLibFeatureExtractor<T> {
       return StringUtils.substringBetween(featureVector, "qid:", " ");
     }
 
-    private boolean shouldSkipLine(String featureVector) {
+    private boolean shouldSkip(String featureVector) {
       featureVector = featureVector.trim();
       return featureVector.isEmpty() || featureVector.startsWith("#");
     }
@@ -126,13 +126,14 @@ public interface RankLibFeatureExtractor<T> {
     public DataPoint convertToDataPoint(Document doc, int docId, RerankerContext<T> context) {
       String documentId = doc.get(LuceneDocumentGenerator.FIELD_ID);
 
-      if(!topicToDocumentToFeatureVector.containsKey(context.getQueryId())) {
-        throw new RuntimeException("feature vector file contained no qid like this: "+context.getQueryDocId());
+      if (!topicToDocumentToFeatureVector.containsKey(context.getQueryId())) {
+        throw new RuntimeException("Feature vector file contained no qid like this: " + context.getQueryId());
       }
-      if(!topicToDocumentToFeatureVector.get(context.getQueryId()).containsKey(documentId)) {
-          throw new RuntimeException("Feature vector file has no document '"+ documentId +"' for query '"+ context.getQueryId() +"'.");    	  
+      if (!topicToDocumentToFeatureVector.get(context.getQueryId()).containsKey(documentId)) {
+        throw new RuntimeException(
+            "Feature vector file has no document '" + documentId + "' for query '" + context.getQueryId() + "'.");
       }
-      
+
       return topicToDocumentToFeatureVector.get(context.getQueryId()).get(documentId);
     }
   }

@@ -11,16 +11,16 @@ import org.junit.Test;
 import org.kohsuke.args4j.CmdLineException;
 
 public class RerankExistingRunfileTest {
-  private static final String[] PROGRAM_ARGS_WITH_DESCENDING_CLICK_RERANKER(Path run_file) {
+  private static final String[] args(Path run_file) {
     return new String[] { "-topicreader", "Trec", "-topics", "./src/main/resources/topics-and-qrels/topics.51-100.txt",
         "-output", run_file.toAbsolutePath().toString(), "-runFileToRerank", "./src/test/resources/TestRunFileReranker",
-        "-bm25", "-arbitraryScoreTieBreak", "-runtag", "runTag"};
+        "-bm25", "-arbitraryScoreTieBreak", "-runtag", "runTag" };
   };
 
   @Test
   public void testRerankExistingRunfile() throws IOException, CmdLineException {
     Path runPath = Files.createTempFile("aus", "");
-    RerankExistingRunfile.main(PROGRAM_ARGS_WITH_DESCENDING_CLICK_RERANKER(runPath));
+    RerankExistingRunfile.main(args(runPath));
     String runfileContend = new String(Files.readAllBytes(runPath), StandardCharsets.UTF_8);
     String expected = "51 Q0 clueweb09-en0011-41-17287 1 2.000000 runTag\n"
         + "52 Q0 clueweb09-en0011-72-16411 1 1.000000 runTag\n" + "53 Q0 clueweb09-en0006-14-40112 1 5.997700 runTag\n"
