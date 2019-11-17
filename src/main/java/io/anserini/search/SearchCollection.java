@@ -214,14 +214,17 @@ public final class SearchCollection implements Closeable {
 
     if (!Files.exists(indexPath) || !Files.isDirectory(indexPath) || !Files.isReadable(indexPath)) {
       throw new IllegalArgumentException(args.index + " does not exist or is not a directory.");
-    }this.reader = null;
-//    LOG.info("Reading index at " + indexPath);
-//    if (args.inmem) {
-//      this.reader = DirectoryReader.open(MMapDirectory.open(indexPath));
-//    } else {
-//      this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
-//    }
-
+    }
+    if (args instanceof RerankerSearchArgs) {
+      this.reader = null;
+    } else {
+      LOG.info("Reading index at " + indexPath);
+      if (args.inmem) {
+        this.reader = DirectoryReader.open(MMapDirectory.open(indexPath));
+      } else {
+        this.reader = DirectoryReader.open(FSDirectory.open(indexPath));
+      }
+    }
     // Are we searching tweets?
     if (args.searchtweets) {
       LOG.info("Search Tweets");
