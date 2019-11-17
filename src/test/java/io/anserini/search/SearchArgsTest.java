@@ -13,7 +13,9 @@ import org.powermock.core.classloader.annotations.PrepareForTest;
 import org.powermock.modules.junit4.PowerMockRunner;
 
 import io.anserini.ltr.feature.FeatureExtractors;
+import io.anserini.rerank.lib.RankLibFeatureExtractor.FeatureVectorFileRankLibFeatureExtractor;
 import io.anserini.rerank.lib.RankLibFeatureExtractor.IndexReaderRankLibFeatureExtractor;
+import io.anserini.rerank.lib.RankLibFeatureExtractor;
 import io.anserini.rerank.lib.RankLibReranker;
 
 @RunWith(PowerMockRunner.class)
@@ -34,6 +36,22 @@ public class SearchArgsTest {
     "-topics", "my-topic-file-1", "my-topic-file-2", "-output",
     "run_file", "-bm25",
     "-experimental.args", "-collection=clueweb",
+    "-model", "my-trained-regression-model"
+  };
+  
+  private static final String[] PROGRAM_ARGS_WITH_FEATURE_FILE_RANKLIB_RERANKER = new String[] {
+    "-topicreader", "Webxml", "-index", "my-index",
+    "-topics", "my-topic-file-1", "my-topic-file-2", "-output",
+    "run_file", "-bm25",
+    "-experimental.args", "-rankLibFeatureVectorFile=src/test/resources/artificial_small.fv",
+    "-model", "my-trained-regression-model"
+  };
+  
+  private static final String[] PROGRAM_ARGS_WITH_NON_EXISTING_FEATURE_FILE_RANKLIB_RERANKER = new String[] {
+    "-topicreader", "Webxml", "-index", "my-index",
+    "-topics", "my-topic-file-1", "my-topic-file-2", "-output",
+    "run_file", "-bm25",
+    "-experimental.args", "-rankLibFeatureVectorFile=non-existing-file",
     "-model", "my-trained-regression-model"
   };
 
@@ -76,6 +94,27 @@ public class SearchArgsTest {
     searchArgs.rankLibReranker();
     Assert.assertEquals("contents", rankLibArguments.get("term-field"));
     Assert.assertTrue(((FeatureExtractors) rankLibArguments.get("features")).extractors.size() > 0);
+  }
+  
+  @Test
+  public <T> void testParsingOfSearchArgsWithRanklibRerankerFromFile() throws Exception {
+    SearchArgs searchArgs = SearchCollection.parseSearchArgsOrFail(PROGRAM_ARGS_WITH_FEATURE_FILE_RANKLIB_RERANKER);
+
+    Assert.assertEquals("my-index", searchArgs.index);
+    Assert.assertEquals("Webxml", searchArgs.topicReader);
+    Assert.assertEquals("run_file", searchArgs.output);
+    Assert.assertEquals("my-trained-regression-model", searchArgs.model);
+    Assert.assertArrayEquals(new String[] {"my-topic-file-1", "my-topic-file-2"}, searchArgs.topics);
+
+    RankLibFeatureExtractor<T> featureExtractor = RankLibFeatureExtractor.fromSearchErgs(searchArgs);
+
+    Assert.assertTrue(featureExtractor instanceof FeatureVectorFileRankLibFeatureExtractor);
+  }
+  
+  @Test(expected=RuntimeException.class)
+  public <T> void testParsingOfSearchArgsWithRanklibRerankerFromNonExistingFile() throws Exception {
+    SearchArgs searchArgs = SearchCollection.parseSearchArgsOrFail(PROGRAM_ARGS_WITH_NON_EXISTING_FEATURE_FILE_RANKLIB_RERANKER);
+    RankLibFeatureExtractor.fromSearchErgs(searchArgs);
   }
 
   private static void mockRankLibRerankerCreation(Map<String, Object> rankLibArguments) throws Exception {
