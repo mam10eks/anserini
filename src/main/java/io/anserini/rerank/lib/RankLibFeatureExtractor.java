@@ -12,8 +12,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.Terms;
 
-import com.ctc.wstx.util.StringUtil;
-
 import ciir.umass.edu.learning.DataPoint;
 import io.anserini.index.generator.LuceneDocumentGenerator;
 import io.anserini.ltr.BaseFeatureExtractor;
@@ -77,27 +75,42 @@ public interface RankLibFeatureExtractor<T> {
   }
 
   public static class FeatureVectorFileRankLibFeatureExtractor<T> implements RankLibFeatureExtractor<T> {
+
+    // qid -> documentid -> Feature
+    final Map<String, Map<String, DataPoint>> topicToDocumentToFeatureVector;
+
     public FeatureVectorFileRankLibFeatureExtractor(File featureVectorFile) throws IOException {
-      topicToDocumentToFeatureVector=new HashMap<>();
-      List<String> featureVectors = Files.readAllLines(featureVectorFile.toPath());
+      this(Files.readAllLines(featureVectorFile.toPath()));
+    }
+    
+    public FeatureVectorFileRankLibFeatureExtractor(List<String> featureVectors) {
+      topicToDocumentToFeatureVector = new HashMap<>();
+
       for (String featureVector : featureVectors) {
         if (shouldSkipLine(featureVector)) {
           continue;
         }
+
         String qid = extractQueryID(featureVector);
         String docid = extractDocID(featureVector);
         DataPoint datapoint = extractDataPoint(featureVector);
+
         topicToDocumentToFeatureVector.putIfAbsent(qid, new HashMap<>());
         topicToDocumentToFeatureVector.get(qid).put(docid, datapoint);
       }
     }
 
     private DataPoint extractDataPoint(String featureVector) {
-      return new DataPoint(featureVector);
+      return new DataPoint(featureVector.replaceAll("^\\d+ qid:", "0 qid:"));
     }
 
     private String extractDocID(String featureVector) {
-      return StringUtils.substringAfter(featureVector, "#");
+      String comment = StringUtils.substringAfter(featureVector, "#");
+      if(comment.contains("docid = ")) {
+        return StringUtils.substringBetween(comment, "docid = ", " ");
+      }
+      
+      return comment;
     }
 
     private String extractQueryID(String featureVector) {
@@ -109,17 +122,18 @@ public interface RankLibFeatureExtractor<T> {
       return featureVector.isEmpty() || featureVector.startsWith("#");
     }
 
-    // qid -> documentid -> Feature
-    Map<String, Map<String, DataPoint>> topicToDocumentToFeatureVector;
-
     @Override
     public DataPoint convertToDataPoint(Document doc, int docId, RerankerContext<T> context) {
+      String documentId = doc.get(LuceneDocumentGenerator.FIELD_ID);
+
       if(!topicToDocumentToFeatureVector.containsKey(context.getQueryId())) {
         throw new RuntimeException("feature vector file contained no qid like this: "+context.getQueryDocId());
       }
-      return topicToDocumentToFeatureVector.get(context.getQueryId()).get(doc.get(LuceneDocumentGenerator.FIELD_ID));
+      if(!topicToDocumentToFeatureVector.get(context.getQueryId()).containsKey(documentId)) {
+          throw new RuntimeException("Feature vector file has no document '"+ documentId +"' for query '"+ context.getQueryId() +"'.");    	  
+      }
+      
+      return topicToDocumentToFeatureVector.get(context.getQueryId()).get(documentId);
     }
-
   }
-
 }
