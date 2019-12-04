@@ -110,6 +110,7 @@ public interface RankLibFeatureExtractor<T> {
 
     private String extractDocID(String featureVector) {
       String comment = StringUtils.substringAfter(featureVector, "#");
+      comment = comment.trim();
       if (comment.contains("docid = ")) {
         return StringUtils.substringBetween(comment, "docid = ", " ");
       }

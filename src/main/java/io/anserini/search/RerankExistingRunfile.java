@@ -86,8 +86,8 @@ public class RerankExistingRunfile {
 
     List<TaggedSimilarity> similarities = s.constructSimiliries();
     Map<String, RerankerCascade> cascades = s.constructRerankerCascades();
-    System.out.println(cascades.values().iterator().next());
-    System.out.println(similarities);
+//    System.out.println(cascades.values().iterator().next());
+//    System.out.println(similarities);
     SearcherThread<Object> k = s.new SearcherThread<Object>(mocked, topics, similarities.get(0), "cascadeTag",
         cascades.values().iterator().next(), sargs.output , sargs.runtag);
 
