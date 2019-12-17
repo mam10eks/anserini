@@ -115,6 +115,9 @@ public class SearchArgs {
   @Option(name = "-bm25", usage = "use BM25 scoring model")
   public boolean bm25 = false;
 
+  @Option(name = "-tfidf", usage = "use TF-IDF scoring model")
+  public boolean tfidf = false;
+
   @Option(name = "-k1", handler = StringArrayOptionHandler.class, usage = "BM25 k1 parameter")
   public String[] k1 = new String[] {"0.9"};
 
