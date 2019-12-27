@@ -117,6 +117,9 @@ public class SearchArgs {
 
   @Option(name = "-tfidf", usage = "use TF-IDF scoring model")
   public boolean tfidf = false;
+  
+  @Option(name = "-tf", usage = "use TF scoring model")
+  public boolean tf = false;
 
   @Option(name = "-k1", handler = StringArrayOptionHandler.class, usage = "BM25 k1 parameter")
   public String[] k1 = new String[] {"0.9"};

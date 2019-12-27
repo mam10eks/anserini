@@ -32,6 +32,7 @@ import io.anserini.search.query.SdmQueryGenerator;
 import io.anserini.search.similarity.F2ExpSimilarity;
 import io.anserini.search.similarity.F2LogSimilarity;
 import io.anserini.search.similarity.TaggedSimilarity;
+import io.anserini.search.similarity.TfSimilarity;
 import io.anserini.search.topicreader.NewsBackgroundLinkingTopicReader;
 import io.anserini.search.topicreader.TopicReader;
 import io.anserini.util.AnalyzerUtils;
@@ -246,6 +247,8 @@ public final class SearchCollection implements Closeable {
       }
     } else if (args.tfidf) {
       similarities.add(new TaggedSimilarity(new ClassicSimilarity(), ""));
+    } else if (args.tf) {
+      similarities.add(new TaggedSimilarity(new TfSimilarity(), ""));
     } else {
       throw new IllegalArgumentException("Error: Must specify scoring model!");
     }
