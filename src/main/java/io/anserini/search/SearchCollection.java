@@ -32,7 +32,6 @@ import io.anserini.search.query.SdmQueryGenerator;
 import io.anserini.search.similarity.F2ExpSimilarity;
 import io.anserini.search.similarity.F2LogSimilarity;
 import io.anserini.search.similarity.TaggedSimilarity;
-import io.anserini.search.similarity.TfSimilarity;
 import io.anserini.search.topicreader.NewsBackgroundLinkingTopicReader;
 import io.anserini.search.topicreader.TopicReader;
 import io.anserini.util.AnalyzerUtils;
@@ -45,6 +44,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.flexible.core.QueryNodeException;
 import org.apache.lucene.queryparser.flexible.standard.StandardQueryParser;
 import org.apache.lucene.search.*;
@@ -245,10 +245,6 @@ public final class SearchCollection implements Closeable {
       for (String s : args.f2log_s) {
         similarities.add(new TaggedSimilarity(new F2LogSimilarity(Float.valueOf(s)), "s:"+s));
       }
-    } else if (args.tfidf) {
-      similarities.add(new TaggedSimilarity(new ClassicSimilarity(), ""));
-    } else if (args.tf) {
-      similarities.add(new TaggedSimilarity(new TfSimilarity(), ""));
     } else {
       throw new IllegalArgumentException("Error: Must specify scoring model!");
     }
