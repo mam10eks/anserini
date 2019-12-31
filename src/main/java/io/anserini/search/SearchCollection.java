@@ -33,6 +33,7 @@ import io.anserini.search.query.BagOfWordsQueryGenerator;
 import io.anserini.search.query.SdmQueryGenerator;
 import io.anserini.search.similarity.AccurateBM25Similarity;
 import io.anserini.search.similarity.TaggedSimilarity;
+import io.anserini.search.similarity.TfSimilarity;
 import io.anserini.search.topicreader.NewsBackgroundLinkingTopicReader;
 import io.anserini.search.topicreader.TopicReader;
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -68,6 +69,7 @@ import org.apache.lucene.search.similarities.AxiomaticF2EXP;
 import org.apache.lucene.search.similarities.AxiomaticF2LOG;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.BasicModelIn;
+import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
 import org.apache.lucene.search.similarities.DistributionSPL;
 import org.apache.lucene.search.similarities.IBSimilarity;
@@ -299,6 +301,10 @@ public final class SearchCollection implements Closeable {
       for (String s : args.f2log_s) {
         similarities.add(new TaggedSimilarity(new AxiomaticF2LOG(Float.valueOf(s)), "s:"+s));
       }
+    } else if (args.tfidf) {
+      similarities.add(new TaggedSimilarity(new ClassicSimilarity(), ""));
+    } else if (args.tf) {
+      similarities.add(new TaggedSimilarity(new TfSimilarity(), ""));
     } else {
       throw new IllegalArgumentException("Error: Must specify scoring model!");
     }
