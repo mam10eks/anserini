@@ -1,5 +1,5 @@
-/**
- * Anserini: A toolkit for reproducible information retrieval research built on Lucene
+/*
+ * Anserini: A Lucene toolkit for replicable information retrieval research
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,12 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.highlight.TokenStreamFromTermVector;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Static method that will count bigram pairs since this is used
@@ -42,12 +47,14 @@ public class CountBigramPairs {
 
   /**
    * Method will count coocurrence of pairs specified in queryPairMap
-   * and store counts for each window size in counters
+   * and store counts for each window size in counters.
    * NOTE method mutates inputs
    * @param singleCountMap    a count of single tokens as we encounter them, useful if any smoothing
    * @param queryPairMap      all pairs of strings we are looking for
    * @param gapSizes          list of window sizes to compute for
-   * @param counters          Window size to counter map
+   * @param counters          window size to counter map
+   * @param terms             query terms
+   * @throws IOException if error encountered reading index
    */
   public static void countPairs(Map<String, Integer> singleCountMap, Map<String, Set<String>> queryPairMap,
                                 ArrayList<Integer> gapSizes,
@@ -65,6 +72,8 @@ public class CountBigramPairs {
      * @param backQueryPairMap  all pairs of reverse pairs, ei if query is test query, this would include query test
      * @param gapSizes          list of window sizes to compute for
      * @param counters          Window size to counter map
+     * @param terms             query terms
+     * @throws IOException if error encountered reading index
      */
   public static void countPairs(Map<String, Integer> singleCountMap, Map<String, Set<String>> queryPairMap,
                                 Map<String, Set<String>> backQueryPairMap,

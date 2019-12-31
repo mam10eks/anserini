@@ -1,5 +1,5 @@
-/**
- * Anserini: A toolkit for reproducible information retrieval research built on Lucene
+/*
+ * Anserini: A Lucene toolkit for replicable information retrieval research
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,22 +30,43 @@ import org.apache.logging.log4j.Logger;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.en.EnglishAnalyzer;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocValuesFieldExistsQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.FSDirectory;
+import org.jsoup.Jsoup;
 import org.kohsuke.args4j.CmdLineException;
 import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.ParserProperties;
-import edu.stanford.nlp.simple.Sentence;
-import org.jsoup.Jsoup;
 
-import java.io.*;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
@@ -65,8 +86,8 @@ import static java.util.stream.Collectors.joining;
 public class IndexUtils {
   private static final Logger LOG = LogManager.getLogger(IndexUtils.class);
 
-  enum Compression { NONE, GZ, BZ2, ZIP }
-  enum DocVectorWeight {NONE, TF_IDF}
+  public enum Compression { NONE, GZ, BZ2, ZIP }
+  public enum DocumentVectorWeight {NONE, TF_IDF}
 
   public static final class Args {
     @Option(name = "-index", metaVar = "[Path]", required = true, usage = "index path")
@@ -86,7 +107,7 @@ public class IndexUtils {
 
     @Option(name = "-docVectorWeight", metaVar = "[str]",
             usage = "the weight for dumped document vector(s), NONE or TF_IDF")
-    DocVectorWeight docVectorWeight;
+    DocumentVectorWeight docVectorWeight;
 
     @Option(name = "-dumpAllDocids", usage = "dumps all docids in sorted order. For non-tweet collection the order is " +
             "in ascending of String docid; For tweets collection the order is in descending of Long tweet id" +
@@ -106,20 +127,11 @@ public class IndexUtils {
     @Option(name = "-dumpTransformedDoc", metaVar = "docid", usage = "dumps transformed document (if stored in the index)")
     String transformedDoc;
 
-    @Option(name = "-dumpSentences", metaVar = "docid", usage = "splits the fetched document into sentences (if stored in the index)")
-    String sentDoc;
-
     @Option(name = "-convertDocidToLuceneDocid", metaVar = "docid", usage = "converts a collection lookupDocid to a Lucene internal lookupDocid")
     String lookupDocid;
 
     @Option(name = "-convertLuceneDocidToDocid", metaVar = "docid", usage = "converts to a Lucene internal lookupDocid to a collection lookupDocid ")
     int lookupLuceneDocid;
-  }
-
-  public class NotStoredException extends Exception {
-    public NotStoredException(String message) {
-      super(message);
-    }
   }
 
   private final FSDirectory directory;
@@ -147,8 +159,7 @@ public class IndexUtils {
   }
 
   void printIndexStats() throws IOException {
-    Fields fields = MultiFields.getFields(reader);
-    Terms terms = fields.terms(LuceneDocumentGenerator.FIELD_BODY);
+    Terms terms = MultiTerms.getTerms(reader, LuceneDocumentGenerator.FIELD_BODY);
 
     System.out.println("Index statistics");
     System.out.println("----------------");
@@ -159,10 +170,9 @@ public class IndexUtils {
 
     System.out.println("stored fields:");
 
-    FieldInfos fieldInfos = MultiFields.getMergedFieldInfos(reader);
-    for (String fd : fields) {
-      FieldInfo fi = fieldInfos.fieldInfo(fd);
-      System.out.println("  " + fd + " (" + "indexOption: " + fi.getIndexOptions() +
+    FieldInfos fieldInfos = FieldInfos.getMergedFieldInfos(reader);
+    for (FieldInfo fi : fieldInfos) {
+      System.out.println("  " + fi.name + " (" + "indexOption: " + fi.getIndexOptions() +
           ", hasVectors: " + fi.hasVectors() + ")");
     }
   }
@@ -178,7 +188,7 @@ public class IndexUtils {
     System.out.println("collection frequency: " + reader.totalTermFreq(t));
     System.out.println("document frequency:   " + reader.docFreq(t));
 
-    PostingsEnum postingsEnum = MultiFields.getTermDocsEnum(reader, LuceneDocumentGenerator.FIELD_BODY, t.bytes());
+    PostingsEnum postingsEnum = MultiTerms.getTermPostingsEnum(reader, LuceneDocumentGenerator.FIELD_BODY, t.bytes());
     System.out.println("postings:\n");
     while (postingsEnum.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
       System.out.printf("\t%s, %s\n", postingsEnum.docID(), postingsEnum.freq());
@@ -200,7 +210,7 @@ public class IndexUtils {
     }
   }
 
-  public void dumpDocumentVectors(String reqDocidsPath, DocVectorWeight weight) throws IOException {
+  public void dumpDocumentVectors(String reqDocidsPath, DocumentVectorWeight weight) throws IOException {
     String outFileName = weight == null ? reqDocidsPath+".docvector.tar.gz" : reqDocidsPath+".docvector." + weight +".tar.gz";
     LOG.info("Start dump document vectors with weight " + weight);
 
@@ -430,19 +440,6 @@ public class IndexUtils {
     return doc.stringValue();
   }
 
-  public List<Sentence> getSentDocument(String docid) throws IOException, NotStoredException {
-    String toSplit;
-    try {
-      toSplit = getTransformedDocument(docid);
-    } catch (NotStoredException e) {
-      String rawDoc = getRawDocument(docid);
-      org.jsoup.nodes.Document jDoc = Jsoup.parse(rawDoc);
-      toSplit = jDoc.text();
-    }
-    edu.stanford.nlp.simple.Document doc = new edu.stanford.nlp.simple.Document(toSplit);
-    return doc.sentences();
-  }
-
   public int convertDocidToLuceneDocid(String docid) throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
 
@@ -495,7 +492,7 @@ public class IndexUtils {
 
     if (args.docVectors != null) {
       if (args.docVectorWeight == null) {
-        args.docVectorWeight = DocVectorWeight.NONE;
+        args.docVectorWeight = DocumentVectorWeight.NONE;
       }
       util.dumpDocumentVectors(args.docVectors, args.docVectorWeight);
     }
@@ -518,12 +515,6 @@ public class IndexUtils {
 
     if (args.transformedDoc != null) {
       System.out.println(util.getTransformedDocument(args.transformedDoc));
-    }
-
-    if (args.sentDoc != null) {
-      for (Sentence sent: util.getSentDocument(args.sentDoc)){
-        System.out.println(sent);
-      }
     }
 
     if (args.lookupDocid != null) {

@@ -1,5 +1,5 @@
-/**
- * Anserini: A toolkit for reproducible information retrieval research built on Lucene
+/*
+ * Anserini: A Lucene toolkit for replicable information retrieval research
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,6 @@
  */
 
 package io.anserini.kg;
-
-import org.openrdf.model.Literal;
-import org.openrdf.rio.ntriples.NTriplesUtil;
 
 import io.anserini.analysis.FreebaseAnalyzer;
 import org.apache.commons.lang3.time.DurationFormatUtils;
@@ -37,8 +34,10 @@ import org.kohsuke.args4j.CmdLineParser;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.OptionHandlerFilter;
 import org.kohsuke.args4j.ParserProperties;
+import org.openrdf.model.Literal;
 import org.openrdf.model.ValueFactory;
 import org.openrdf.model.impl.SimpleValueFactory;
+import org.openrdf.rio.ntriples.NTriplesUtil;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -161,7 +160,7 @@ public class IndexFreebase {
 
     LOG.info(String.format("%,d triples indexed.", triplesCount.get()));
     LOG.info(String.format("%,d documents added.", docCount.get()));
-    int numIndexed = writer.maxDoc();
+    int numIndexed = writer.getDocStats().maxDoc;
 
     try {
       writer.commit();

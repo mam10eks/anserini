@@ -1,5 +1,5 @@
-/**
- * Anserini: A toolkit for reproducible information retrieval research built on Lucene
+/*
+ * Anserini: A Lucene toolkit for replicable information retrieval research
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,10 +16,13 @@
 
 package io.anserini.doc;
 
-import java.nio.file.Paths;
-import java.util.*;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.text.WordUtils;
+
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DataModel {
   private String name;
@@ -38,6 +41,7 @@ public class DataModel {
   private String input;
   private String index_path;
   private List<String> index_options;
+  private List<String> search_options;
   private Map<String, Long> index_stats;
   private List<Model> models;
   private List<Topic> topics;
@@ -210,12 +214,14 @@ public class DataModel {
 
   static class Model {
     private String name;
+    private String display;
     private List<String> params;
     private Map<String, List<Float>> results;
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public Map<String, List<Float>> getResults() { return results; }
+    public String getDisplay() { return display; }
     public void setResults(Map<String, List<Float>> results) { this.results = results; }
     public List<String> getParams() { return params; }
     public void setParams(List<String> params) { this.params = params; }
@@ -254,6 +260,14 @@ public class DataModel {
     this.index_options = index_options;
   }
 
+  public List<String> getSearch_options() {
+    return search_options;
+  }
+
+  public void setSearch_options(List<String> search_options) {
+    this.search_options = search_options;
+  }
+
   public String generateIndexingCommand(String collection) {
     boolean containRawDocs = false;
     for (String option : getIndex_options()) {
@@ -265,15 +279,15 @@ public class DataModel {
     builder.append("nohup sh ");
     builder.append(getIndex_command());
     builder.append(" -collection ").append(getCollection());
-    builder.append(" -generator ").append(getGenerator());
-    builder.append(" -threads ").append(getThreads());
-    builder.append(" -input ").append("/path/to/"+collection);
+    builder.append(" -input ").append("/path/to/"+collection).append(" \\\n");
     builder.append(" -index ").append("lucene-index."+getName()+".pos+docvectors"+(containRawDocs ? "+rawdocs" : ""));
+    builder.append(" -generator ").append(getGenerator());
+    builder.append(" -threads ").append(getThreads()).append(" \\\n");
     for (String option : getIndex_options()) {
       builder.append(" ").append(option);
     }
     builder.append(String.format(" >& log.%s.pos+docvectors%s &", collection, containRawDocs ? "+rawdocs" : ""));
-    return WordUtils.wrap(builder.toString(), 80, " \\\n", false);
+    return builder.toString();
   }
 
   public String generateRankingCommand(String collection) {
@@ -288,28 +302,31 @@ public class DataModel {
       for (Topic topic : getTopics()) {
         builder.append("nohup ");
         builder.append(getSearch_command());
+        builder.append(" ").append("-index").append(" ").append("lucene-index."+collection+".pos+docvectors"+(containRawDocs ? "+rawdocs" : "")).append(" \\\n");
         builder.append(" ").append("-topicreader").append(" ").append(getTopic_reader());
-        builder.append(" ").append("-index").append(" ").append("lucene-index."+collection+".pos+docvectors"+(containRawDocs ? "+rawdocs" : ""));
-        builder.append(" ").append("-topics").append(" ").append(Paths.get(getTopic_root(), topic.getPath()).toString());
-        builder.append(" ").append("-output").append(" ").append("run."+collection+"."+model.getName()+"."+topic.getPath());
+        builder.append(" ").append("-topics").append(" ").append(Paths.get(getTopic_root(), topic.getPath()).toString()).append(" \\\n");
+        if (getSearch_options() != null) {
+          for (String option : getSearch_options()) {
+            builder.append(" ").append(option);
+          }
+        }
         if (model.getParams() != null) {
           for (String option : model.getParams()) {
             builder.append(" ").append(option);
           }
         }
+        builder.append(" ").append("-output").append(" ").append("run."+collection+"."+model.getName()+"."+topic.getPath());
         builder.append(" &"); // nohup
         builder.append("\n");
       }
       builder.append("\n");
     }
-    builder.delete(builder.lastIndexOf("\n"), builder.length());
 
-    return builder.toString();
+    return builder.toString().trim();
   }
 
   public String generateEvalCommand(String collection) {
-    String allCommandsStr = "";
-    Set<String> allEvalCommands = new HashSet<>();
+    StringBuilder builder = new StringBuilder();
     for (Model model : getModels()) {
       for (Topic topic : getTopics()) {
         Map<String, Map<String, List<String>>> combinedEvalCmd = new HashMap<>();
@@ -330,19 +347,19 @@ public class DataModel {
             combinedEvalCmd.get(evalCmd).putIfAbsent(evalCmdResidual, new ArrayList<>());
             combinedEvalCmd.get(evalCmd).get(evalCmdResidual).add(evalCmdOption);
           } else {
-            allCommandsStr += evalCmd + evalCmdOption + evalCmdResidual;
+            builder.append(evalCmd + evalCmdOption + evalCmdResidual);
           }
         }
         for (Map.Entry<String, Map<String, List<String>>> entry : combinedEvalCmd.entrySet()) {
           for (Map.Entry<String, List<String>> innerEntry : entry.getValue().entrySet()) {
-            allCommandsStr += entry.getKey() + String.join("", innerEntry.getValue()) + innerEntry.getKey();
+            builder.append(entry.getKey() + String.join("", innerEntry.getValue()) + innerEntry.getKey());
           }
         }
       }
-      allCommandsStr += "\n";
+      builder.append("\n");
     }
 
-    return allCommandsStr.substring(0, allCommandsStr.lastIndexOf("\n"));
+    return builder.toString().trim();
   }
 
   public String generateEffectiveness(String collection) {
@@ -350,7 +367,11 @@ public class DataModel {
     for (Eval eval : getEvals()) {
       builder.append(String.format("%1$-40s|", eval.getMetric().toUpperCase()));
       for (Model model : getModels()) {
-        builder.append(String.format(" %1$-10s|", model.getName().toUpperCase()));
+        if (model.getDisplay() == null) {
+          builder.append(String.format(" %1$-10s|", model.getName().toUpperCase()));
+        } else {
+          builder.append(String.format(" %1$-10s|", model.getDisplay()));
+        }
       }
       builder.append("\n");
       builder.append(":").append(StringUtils.repeat("-", 39)).append("|");
@@ -368,8 +389,7 @@ public class DataModel {
       }
       builder.append("\n\n");
     }
-    builder.delete(builder.lastIndexOf("\n"), builder.length());
 
-    return builder.toString();
+    return builder.toString().trim();
   }
 }
