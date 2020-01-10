@@ -61,10 +61,18 @@ public class Rm3Reranker implements Reranker {
     this.outputQuery = outputQuery;
   }
 
-  @Override
-  public ScoredDocuments rerank(ScoredDocuments docs, RerankerContext context) {
-    assert(docs.documents.length == docs.scores.length);
+  public Query feedbackQuery(Query query, RerankerContext context) {
+    try {
+      IndexSearcher searcher = context.getIndexSearcher();
+      TopDocs rs = searcher.search(query, 100);
 
+      return feedbackQuery(ScoredDocuments.fromTopDocs(rs, searcher), context);	
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+  }
+  
+  public Query feedbackQuery(ScoredDocuments docs, RerankerContext context) {
     IndexSearcher searcher = context.getIndexSearcher();
     IndexReader reader = searcher.getIndexReader();
 
@@ -83,7 +91,15 @@ public class Rm3Reranker implements Reranker {
       feedbackQueryBuilder.add(new BoostQuery(new TermQuery(new Term(this.field, term)), prob), BooleanClause.Occur.SHOULD);
     }
 
-    Query feedbackQuery = feedbackQueryBuilder.build();
+    return feedbackQueryBuilder.build();
+  }
+
+  @Override
+  public ScoredDocuments rerank(ScoredDocuments docs, RerankerContext context) {
+    assert(docs.documents.length == docs.scores.length);
+
+    Query feedbackQuery = feedbackQuery(docs, context);
+    IndexSearcher searcher = context.getIndexSearcher();
 
     if (this.outputQuery) {
       LOG.info("QID: " + context.getQueryId());
