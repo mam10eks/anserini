@@ -22,18 +22,19 @@ import io.anserini.ltr.BaseFeatureExtractorTest;
 
 public class TfSimilarityTest extends BaseFeatureExtractorTest<String> {
 
-  private static final String
+  public static final String
     DOC_1 = "dog cat dog cat cat",
     DOC_2 = "cat horse rabbit rat rabbit",
     DOC_3 = "cat fish horse",
     DOC_4 = "dog cat";
+  
+  public static List<String> DOCUMENTS = Arrays.asList(DOC_1, DOC_2, DOC_3, DOC_4);
 
   @Before
   public void setup() throws IOException {
-    addTestDocument(DOC_1);
-    addTestDocument(DOC_2);
-    addTestDocument(DOC_3);
-    addTestDocument(DOC_4);
+    for(String doc : DOCUMENTS) {
+      addTestDocument(doc);
+    }
   }
   
   @Test

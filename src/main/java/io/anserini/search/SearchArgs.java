@@ -16,8 +16,12 @@
 
 package io.anserini.search;
 
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
 import org.kohsuke.args4j.Option;
 import org.kohsuke.args4j.spi.StringArrayOptionHandler;
+
+import io.anserini.analysis.EnglishStemmingAnalyzer;
 
 public class SearchArgs {
   // required arguments
@@ -269,4 +273,8 @@ public class SearchArgs {
 
   @Option(name = "-qid_queries", metaVar = "[file]", usage="query id - query mapping file")
   public String qid_queries = "";
+
+  public Analyzer analyzer() {
+    return keepstop ? new EnglishStemmingAnalyzer(stemmer, CharArraySet.EMPTY_SET) : new EnglishStemmingAnalyzer(stemmer);
+  }
 }
