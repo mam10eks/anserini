@@ -1,0 +1,21 @@
+# Begin Feature-Descriptions
+#
+# 1: Run 'notchosen' - Position (default=-1000)
+# 2: Run 'notchosen' - Score (default=-1000)
+# 3: Run 'notchosen' - document listed in the ranking (0=no; 1=yes) (default=0)
+#
+# 4: Run 'unchoose' - Position (default=-1000)
+# 5: Run 'unchoose' - Score (default=-1000)
+# 6: Run 'unchoose' - document listed in the ranking (0=no; 1=yes) (default=0)
+#
+# End Feature-Descriptions
+#
+0 qid:51 1:2 2:2.9999968 3:1 4:2 5:1.9999968 6:1  # clueweb09-en0004-77-30624
+0 qid:51 1:3 2:2.9999968 3:1 4:3 5:1.9999968 6:1  # clueweb09-en0007-86-24769
+0 qid:51 4:22 5:3.9999965 6:1  # clueweb09-en0006-61-04354
+0 qid:51 4:23 5:3.9999965 6:1  # clueweb09-en0006-61-04382
+0 qid:51 4:24 5:3.9999965 6:1  # clueweb09-en0010-86-27052
+0 qid:51 4:25 5:3.9999965 6:1  # clueweb09-en0010-86-27053
+0 qid:51 1:1 2:2.9999970 3:1  # clueweb09-en0007-81-08143
+0 qid:51 1:4 2:2.9999968 3:1  # clueweb09-en0008-42-28801
+0 qid:51 1:5 2:2.9999968 3:1  # clueweb09-en0008-87-10439

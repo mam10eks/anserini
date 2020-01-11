@@ -25,8 +25,9 @@ public interface RankLibFeatureExtractor<T> {
   public DataPoint convertToDataPoint(Document doc, int docId, RerankerContext<T> context);
 
   public static <T> RankLibFeatureExtractor<T> fromSearchErgs(SearchArgs searchArgs) {
-    if(searchArgs.experimentalArgs.containsKey("-rankLibFeatureVectorFile")) {
-      return new FeatureVectorFileRankLibFeatureExtractor<>(new File(searchArgs.experimentalArgs.get("-rankLibFeatureVectorFile")));
+    if (searchArgs.experimentalArgs.containsKey("-rankLibFeatureVectorFile")) {
+      return new FeatureVectorFileRankLibFeatureExtractor<>(
+          new File(searchArgs.experimentalArgs.get("-rankLibFeatureVectorFile")));
     }
 
     List<String> featureExtractionArgs = new ArrayList<>();
@@ -81,31 +82,45 @@ public interface RankLibFeatureExtractor<T> {
   public static class FeatureVectorFileRankLibFeatureExtractor<T> implements RankLibFeatureExtractor<T> {
 
     // qid -> documentid -> Feature
-    final Map<String, Map<String, DataPoint>> topicToDocumentToFeatureVector;
+    final Map<String, Map<String, String>> topicToDocumentToFeatureVector;
+    String defaultFeatureVector = "";
+    boolean sparse = false;
 
-    public FeatureVectorFileRankLibFeatureExtractor(File featureVectorFile){
+    public FeatureVectorFileRankLibFeatureExtractor(File featureVectorFile) {
       this(readFeatureVectors(featureVectorFile));
     }
 
     public FeatureVectorFileRankLibFeatureExtractor(List<String> featureVectors) {
-      topicToDocumentToFeatureVector = new HashMap<>();
+      topicToDocumentToFeatureVector = new HashMap<String, Map<String, String>>();
 
+      boolean inFeatureDescriptions = false;
       for (String featureVector : featureVectors) {
         if (shouldSkip(featureVector)) {
+          if (featureVector.startsWith("# Begin Feature-Descriptions")) {
+            inFeatureDescriptions = true;
+            sparse = true;
+          }
+          if (featureVector.startsWith("# End Feature-Descriptions")) {
+            inFeatureDescriptions = false;
+          }
+          if (inFeatureDescriptions && featureVector.matches("^# \\d+: Run.*$")) {
+            defaultFeatureVector += featureVector.split(" ")[1];
+            defaultFeatureVector += StringUtils.chop(featureVector.split("\\(default=")[1]);
+            defaultFeatureVector += " ";
+          }
           continue;
         }
-
         String qid = extractQueryID(featureVector);
         String docid = extractDocID(featureVector);
-        DataPoint datapoint = extractDataPoint(featureVector);
+        String datapoint = extractDataPoint(featureVector);
 
         topicToDocumentToFeatureVector.putIfAbsent(qid, new HashMap<>());
         topicToDocumentToFeatureVector.get(qid).put(docid, datapoint);
       }
     }
 
-    private DataPoint extractDataPoint(String featureVector) {
-      return new DataPoint(featureVector.replaceAll("^\\d+ qid:", "0 qid:"));
+    private String extractDataPoint(String featureVector) {
+      return featureVector.replaceAll("^\\d+ qid:", "0 qid:");
     }
 
     private String extractDocID(String featureVector) {
@@ -130,26 +145,49 @@ public interface RankLibFeatureExtractor<T> {
     private static List<String> readFeatureVectors(File featureVectorFile) {
       try {
         return Files.readAllLines(featureVectorFile.toPath());
-      }
-      catch(IOException e) {
+      } catch (IOException e) {
         throw new RuntimeException(e);
       }
+    }
+
+    private String fillFeatureVectors(String sparse) {
+      String[] sparsePairs = sparse.split("#")[0].split(" ");
+      String ret = sparsePairs[0] + " " + sparsePairs[1];
+      int sparseIndex = 2;
+      for (String pair : defaultFeatureVector.split(" ")) {
+        String sparsePair = sparsePairs[sparseIndex];
+        String defaultFeatureId = pair.split(":")[0];
+        String sparseFeatureId = sparsePair.split(":")[0];
+        if (defaultFeatureId.equals(sparseFeatureId)) {
+          ret += " " + sparsePair;
+          sparseIndex++;
+        } else {
+          ret += " " + pair;
+        }
+      }
+      return ret+"#"+sparse.split("#")[1];
     }
 
     @Override
     public DataPoint convertToDataPoint(Document doc, int docId, RerankerContext<T> context) {
       String documentId = doc.get(LuceneDocumentGenerator.FIELD_ID);
       String queryId = context.getQueryId().toString();
-      
-      if(!topicToDocumentToFeatureVector.containsKey(queryId)) {
-        throw new RuntimeException("Feature vector file is missing the qid: "+ queryId);
+
+      if (!topicToDocumentToFeatureVector.containsKey(queryId)) {
+        throw new RuntimeException("Feature vector file is missing the qid: " + queryId);
       }
-      if(!topicToDocumentToFeatureVector.get(queryId).containsKey(documentId)) {
+      if (!topicToDocumentToFeatureVector.get(queryId).containsKey(documentId)) {
         throw new RuntimeException(
             "Feature vector file has no document '" + documentId + "' for query '" + context.getQueryId() + "'.");
       }
-
-      return topicToDocumentToFeatureVector.get(queryId).get(documentId);
+      String sparse_datapoint = topicToDocumentToFeatureVector.get(queryId).get(documentId);
+      String filled_data;
+      if (sparse) {
+        filled_data = fillFeatureVectors(sparse_datapoint);
+      } else {
+        filled_data = sparse_datapoint;
+      }
+      return new DataPoint(filled_data);
     }
   }
 }

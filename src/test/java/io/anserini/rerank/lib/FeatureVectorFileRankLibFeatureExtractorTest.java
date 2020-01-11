@@ -21,11 +21,13 @@ public class FeatureVectorFileRankLibFeatureExtractorTest<T> {
   private static final int NON_EXISTING_DUMMY_ID = -1;
 
   RankLibFeatureExtractor<T> extractorOnArtificialFile;
+  RankLibFeatureExtractor<T> extractorOnSparseFile;
   RankLibFeatureExtractor<T> extractorOnMQ2008Sample;
   
   @Before
   public void setUp() throws IOException {
     extractorOnArtificialFile = new RankLibFeatureExtractor.FeatureVectorFileRankLibFeatureExtractor<T>(new File("src/test/resources/artificial_small.fv"));
+    extractorOnSparseFile = new RankLibFeatureExtractor.FeatureVectorFileRankLibFeatureExtractor<T>(new File("src/test/resources/sparse.fv"));
     extractorOnMQ2008Sample = new RankLibFeatureExtractor.FeatureVectorFileRankLibFeatureExtractor<T>(new File("src/test/resources/million-query-2008-fold1-test-sample.fv"));
   }
   
@@ -49,7 +51,13 @@ public class FeatureVectorFileRankLibFeatureExtractorTest<T> {
         createContextForQueryWithId("0"));
     assertEquals(expected.toString(), actual.toString());
   }
-
+  @Test
+  public void checkDataPointIsExtractedAsExpectedFromSparse() throws IOException {
+    DataPoint expected = new DataPoint("0.0 id:51 1:-1000.0 2:-1000.0 3:0.0 4:22.0 5:3.9999964 6:1.0  # clueweb09-en0006-61-04354");
+    DataPoint actual = extractorOnSparseFile.convertToDataPoint(createDocumentWithId("clueweb09-en0006-61-04354"), NON_EXISTING_DUMMY_ID,
+        createContextForQueryWithId("51"));
+    assertEquals(expected.toString(), actual.toString());
+  }
   @Test
   public void checkDataPointIsExtractedAsExpectedFromDocument2() throws IOException {
     DataPoint expected = new DataPoint("0.0 qid:0 1:5.694401 2:2.0794415 3:8.0 4:1.0 5:1.0 #doc-id-2");
