@@ -57,6 +57,11 @@ public class FeatureVectorFileRankLibFeatureExtractorTest<T> {
     DataPoint actual = extractorOnSparseFile.convertToDataPoint(createDocumentWithId("clueweb09-en0006-61-04354"), NON_EXISTING_DUMMY_ID,
         createContextForQueryWithId("51"));
     assertEquals(expected.toString(), actual.toString());
+    
+    expected = new DataPoint("0.0 id:51 1:1.0 2:2.999997 3:1.0 4:-1000.0 5:-1000.0 6:0.0 # clueweb09-en0007-81-08143");
+    actual = extractorOnSparseFile.convertToDataPoint(createDocumentWithId("clueweb09-en0007-81-08143"), NON_EXISTING_DUMMY_ID,
+        createContextForQueryWithId("51"));
+    assertEquals(expected.toString(), actual.toString());
   }
   @Test
   public void checkDataPointIsExtractedAsExpectedFromDocument2() throws IOException {

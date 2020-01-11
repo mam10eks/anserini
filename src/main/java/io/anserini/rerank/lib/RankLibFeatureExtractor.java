@@ -160,12 +160,14 @@ public interface RankLibFeatureExtractor<T> {
         String sparseFeatureId = sparsePair.split(":")[0];
         if (defaultFeatureId.equals(sparseFeatureId)) {
           ret += " " + sparsePair;
-          sparseIndex++;
+          if (sparseIndex < sparsePairs.length - 1) {
+            sparseIndex++;
+          }
         } else {
           ret += " " + pair;
         }
       }
-      return ret+"#"+sparse.split("#")[1];
+      return ret + "#" + sparse.split("#")[1];
     }
 
     @Override
