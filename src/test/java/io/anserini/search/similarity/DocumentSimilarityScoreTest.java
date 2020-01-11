@@ -23,7 +23,6 @@ import org.junit.Test;
 
 import io.anserini.index.generator.LuceneDocumentGenerator;
 import io.anserini.ltr.BaseFeatureExtractorTest;
-import static io.anserini.search.similarity.DocumentSimilarityScore.*;
 import static io.anserini.search.similarity.TfSimilarityTest.*;
 
 public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String> {
@@ -42,7 +41,7 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
   @Test
   public void checkThatDoc1HasScoreOfThreeForQueryCatWithTfSimilarity() throws Exception {    
     float expected = 3.0f;
-    float actual = calculate(new TfSimilarity(), reader(), "cat", idOf(DOC_1));
+    float actual = sim().calculate(new TfSimilarity(), "cat", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
@@ -50,31 +49,31 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
   @Test
   public void checkThatDoc3HasScoreOfZeroForQueryRabbitWithTfSimilarity() throws Exception {
     float expected = 0.0f;
-    float actual = calculate(new TfSimilarity(), reader(), "rabbit", idOf(DOC_1));
+    float actual = sim().calculate(new TfSimilarity(), "rabbit", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
 
   @Test
   public void checkVariousDocumentsWithTfSimilarity() {
-    Assert.assertEquals(3.0f, tfSimilarity(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(1.0f, tfSimilarity(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, tfSimilarity(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(1.0f, tfSimilarity(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(3.0f, sim().tfSimilarity("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(1.0f, sim().tfSimilarity("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().tfSimilarity("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(1.0f, sim().tfSimilarity("dog", idOf(DOC_4)), delta);
   }
   
   @Test
   public void checkVariousDocumentsWithTfSimilarityWithRM3() {
-    Assert.assertEquals(1.5f, tfSimilarityRm3(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.5f, tfSimilarityRm3(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, tfSimilarityRm3(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.5f, tfSimilarityRm3(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(1.5f, sim().tfSimilarityRm3("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.5f, sim().tfSimilarityRm3("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().tfSimilarityRm3("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.5f, sim().tfSimilarityRm3("dog", idOf(DOC_4)), delta);
   }
   
   @Test
   public void checkScoreOfDoc1ForQueryCatWithTfIdfSimilarity() throws Exception {    
     float expected = 0.77459f;
-    float actual = calculate(new ClassicSimilarity(), reader(), "cat", idOf(DOC_1));
+    float actual = sim().calculate(new ClassicSimilarity(), "cat", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
@@ -82,31 +81,31 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
   @Test
   public void checkThatDoc3HasScoreOfZeroForQueryRabbitWithTfIdfSimilarity() throws Exception {
     float expected = 0.0f;
-    float actual = calculate(new ClassicSimilarity(), reader(), "rabbit", idOf(DOC_1));
+    float actual = sim().calculate(new ClassicSimilarity(), "rabbit", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
   
   @Test
   public void checkVariousDocumentsWithTfIdfSimilarity() {
-    Assert.assertEquals(0.77459f, tfIdfSimilarity(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.44721f, tfIdfSimilarity(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, tfIdfSimilarity(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(1.06831f, tfIdfSimilarity(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.77459f, sim().tfIdfSimilarity("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.44721f, sim().tfIdfSimilarity("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().tfIdfSimilarity("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(1.06831f, sim().tfIdfSimilarity("dog", idOf(DOC_4)), delta);
   }
 
   @Test
   public void checkVariousDocumentsWithTfIdfSimilarityWithRM3() {
-    Assert.assertEquals(0.38729f, tfIdfSimilarityRm3(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.22360f, tfIdfSimilarityRm3(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, tfIdfSimilarityRm3(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.53415f, tfIdfSimilarityRm3(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.38729f, sim().tfIdfSimilarityRm3("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.22360f, sim().tfIdfSimilarityRm3("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().tfIdfSimilarityRm3("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.53415f, sim().tfIdfSimilarityRm3("dog", idOf(DOC_4)), delta);
   }
 
   @Test
   public void checkScoreOfDoc1ForQueryCatWithBM25Similarity() throws Exception {    
     float expected = 0.010196f;
-    float actual = calculate(new BM25Similarity(21f, 1f), reader(), "cat", idOf(DOC_1));
+    float actual = sim().calculate(new BM25Similarity(21f, 1f), "cat", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
@@ -114,31 +113,31 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
   @Test
   public void checkThatDoc3HasScoreOfZeroForQueryRabbitWithBM25Similarity() throws Exception {
     float expected = 0.0f;
-    float actual = calculate(new BM25Similarity(1f, 1f), reader(), "rabbit", idOf(DOC_1));
+    float actual = sim().calculate(new BM25Similarity(1f, 1f), "rabbit", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
   
   @Test
   public void checkVariousDocumentsWithBM25Similarity() {
-    Assert.assertEquals(0.07862f, bm25Similarity(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.05215f, bm25Similarity(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, bm25Similarity(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.40020f, bm25Similarity(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.07862f, sim().bm25Similarity("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.05215f, sim().bm25Similarity("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().bm25Similarity("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.40020f, sim().bm25Similarity("dog", idOf(DOC_4)), delta);
   }
 
   @Test
   public void checkVariousDocumentsWithBM25SimilarityWithRM3() {
-    Assert.assertEquals(0.03931f, bm25SimilarityRm3(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.02607f, bm25SimilarityRm3(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, bm25SimilarityRm3(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.20010f, bm25SimilarityRm3(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.03931f, sim().bm25SimilarityRm3("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.02607f, sim().bm25SimilarityRm3("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().bm25SimilarityRm3("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.20010f, sim().bm25SimilarityRm3("dog", idOf(DOC_4)), delta);
   }
   
   @Test
   public void checkScoreOfDoc1ForQueryCatWithPL2Similarity() throws Exception {    
     float expected = 0.107584f;
-    float actual = calculate(new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(1.0f)), reader(), "cat", idOf(DOC_1));
+    float actual = sim().calculate(new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(1.0f)), "cat", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
@@ -146,31 +145,31 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
   @Test
   public void checkThatDoc3HasScoreOfZeroForQueryRabbitWithPL2Similarity() throws Exception {
     float expected = 0.0f;
-    float actual = calculate(new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(1.0f)), reader(), "rabbit", idOf(DOC_1));
+    float actual = sim().calculate(new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(1.0f)), "rabbit", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
   
   @Test
   public void checkVariousDocumentsWithPl2Similarity() {
-    Assert.assertEquals(0.036236f, pl2Similarity(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.014361f, pl2Similarity(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, pl2Similarity(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.198671f, pl2Similarity(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.036236f, sim().pl2Similarity("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.014361f, sim().pl2Similarity("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().pl2Similarity("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.198671f, sim().pl2Similarity("dog", idOf(DOC_4)), delta);
   }
 
   @Test
   public void checkVariousDocumentsWithPl2SimilarityRM3() {
-    Assert.assertEquals(0.018118f, pl2SimilarityRm3(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.007180f, pl2SimilarityRm3(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, pl2SimilarityRm3(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.099335f, pl2SimilarityRm3(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.018118f, sim().pl2SimilarityRm3("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.007180f, sim().pl2SimilarityRm3("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().pl2SimilarityRm3("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.099335f, sim().pl2SimilarityRm3("dog", idOf(DOC_4)), delta);
   }
   
   @Test
   public void checkScoreOfDoc1ForQueryCatWithQueryLikelihoodSimilarity() throws Exception {    
     float expected = 0.30040f;
-    float actual = calculate(new LMDirichletSimilarity(0.3f), reader(), "cat", idOf(DOC_1));
+    float actual = sim().calculate(new LMDirichletSimilarity(0.3f), "cat", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
@@ -178,31 +177,37 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
   @Test
   public void checkThatDoc3HasScoreOfZeroForQueryRabbitWithQueryLikelihoodSimilarity() throws Exception {
     float expected = 0.0f;
-    float actual = calculate(new LMDirichletSimilarity(0.3f), reader(), "rabbit", idOf(DOC_1));
+    float actual = sim().calculate(new LMDirichletSimilarity(0.3f), "rabbit", idOf(DOC_1));
     
     Assert.assertEquals(expected, actual, delta);
   }
   
   @Test
   public void checkVariousDocumentsWithQlSimilarity() {
-    Assert.assertEquals(0.001846f, qlSimilarity(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.0f, qlSimilarity(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, qlSimilarity(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.001994f, qlSimilarity(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.001846f, sim().qlSimilarity("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.0f, sim().qlSimilarity("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().qlSimilarity("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.001994f, sim().qlSimilarity("dog", idOf(DOC_4)), delta);
   }
   
   @Test
   public void checkVariousDocumentsWithQlSimilarityRM3() {
-    Assert.assertEquals(0.000923f, qlSimilarityRm3(reader(), "cat", idOf(DOC_1)), delta);
-    Assert.assertEquals(0.0f, qlSimilarityRm3(reader(), "cat", idOf(DOC_2)), delta);
-    Assert.assertEquals(0.0f, qlSimilarityRm3(reader(), "dog", idOf(DOC_3)), delta);
-    Assert.assertEquals(0.000997f, qlSimilarityRm3(reader(), "dog", idOf(DOC_4)), delta);
+    Assert.assertEquals(0.000923f, sim().qlSimilarityRm3("cat", idOf(DOC_1)), delta);
+    Assert.assertEquals(0.0f, sim().qlSimilarityRm3("cat", idOf(DOC_2)), delta);
+    Assert.assertEquals(0.0f, sim().qlSimilarityRm3("dog", idOf(DOC_3)), delta);
+    Assert.assertEquals(0.000997f, sim().qlSimilarityRm3("dog", idOf(DOC_4)), delta);
+  }
+  
+  private DocumentSimilarityScore sim() {
+    return new DocumentSimilarityScore(reader());
   }
   
   private IndexReader reader() {
-    return makeTestContext("NOT-USED").getIndexSearcher().getIndexReader();
+    return makeTestContext("NOT-USED")
+      .getIndexSearcher()
+      .getIndexReader();
   }
-  
+ 
   @Override
   protected Document addTestDocument(String testText) throws IOException {
     FieldType fieldType = new FieldType();

@@ -29,90 +29,80 @@ import io.anserini.search.query.BagOfWordsQueryGenerator;
 
 public class DocumentSimilarityScore {
 
-  public static float tfSimilarity(IndexReader indexReader, String query, String documentId) {
-    return calculate(new TfSimilarity(), indexReader, query, documentId);
+  private final IndexReader indexReader;
+  
+  private final SearchArgs args;
+  
+  public DocumentSimilarityScore(IndexReader indexReader) {
+    this.indexReader = indexReader;
+    this.args = new SearchArgs();
+  }
+
+  public float tfSimilarity(String query, String documentId) {
+    return calculate(new TfSimilarity(), query, documentId);
   }
   
-  public static float tfSimilarityRm3(IndexReader indexReader, String query, String documentId) {
+  public float tfSimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(new TfSimilarity(), query, documentId);
+  }
+  
+  public float tfIdfSimilarity(String query, String documentId) {
+    return calculate(new ClassicSimilarity(), query, documentId);
+  }
+  
+  public float tfIdfSimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(new ClassicSimilarity(), query, documentId);
+  }
+
+  public float bm25Similarity(String query, String documentId) {
+    return calculate(bm25(), query, documentId);
+  }
+
+  public float bm25SimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(bm25(), query, documentId);
+  }
+  
+  private BM25Similarity bm25() {
+    return new BM25Similarity(uniqueFloat(args.k1), uniqueFloat(args.b));
+  }
+
+  public float pl2Similarity(String query, String documentId) {
+    return calculate(pl2(), query, documentId);
+  }
+  
+  public float pl2SimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(pl2(), query, documentId);
+  }
+  
+  private DFRSimilarity pl2() {
+    return new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(uniqueFloat(args.inl2_c)));
+  }
+
+  public float qlSimilarity(String query, String documentId) {
+    return calculate(ql(), query, documentId);
+  }
+
+  public float qlSimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(ql(), query, documentId);
+  }
+  
+  private LMDirichletSimilarity ql() {
+    return new LMDirichletSimilarity(uniqueFloat(args.mu));
+  }
+
+  public float calculateWithRm3(Similarity similarity, String query, String documentId) {
     Rm3Reranker reranker = reranker();
-    IndexSearcher searcher = searcher(new TfSimilarity(), indexReader);
+    IndexSearcher searcher = searcher(similarity, indexReader);
     Query feedbackQuery = reranker.feedbackQuery(similarityInBody(query), rerankerContext(searcher, query));
 
     return calculate(searcher, feedbackQuery, documentId);
   }
   
-  public static float tfIdfSimilarity(IndexReader indexReader, String query, String documentId) {
-    return calculate(new ClassicSimilarity(), indexReader, query, documentId);
-  }
-  
-  public static float tfIdfSimilarityRm3(IndexReader indexReader, String query, String documentId) {
-    Rm3Reranker reranker = reranker();
-    IndexSearcher searcher = searcher(new ClassicSimilarity(), indexReader);
-    Query feedbackQuery = reranker.feedbackQuery(similarityInBody(query), rerankerContext(searcher, query));
-
-    return calculate(searcher, feedbackQuery, documentId);
-  }
-
-  public static float bm25Similarity(IndexReader indexReader, String query, String documentId) {
-    SearchArgs args = new SearchArgs();
-    float k1 = Float.valueOf(args.k1[0]);
-    float b = Float.valueOf(args.b[0]);
-    
-    return calculate(new BM25Similarity(k1, b), indexReader, query, documentId);
-  }
-
-  public static float bm25SimilarityRm3(IndexReader indexReader, String query, String documentId) {
-    SearchArgs args = new SearchArgs();
-    Rm3Reranker reranker = reranker();
-    float k1 = Float.valueOf(args.k1[0]);
-    float b = Float.valueOf(args.b[0]);
-    IndexSearcher searcher = searcher(new BM25Similarity(k1, b), indexReader);
-    Query feedbackQuery = reranker.feedbackQuery(similarityInBody(query), rerankerContext(searcher, query));
-
-    return calculate(searcher, feedbackQuery, documentId);
-  }
-
-  public static float pl2Similarity(IndexReader indexReader, String query, String documentId) {
-    SearchArgs args = new SearchArgs();
-    float c = Float.valueOf(args.inl2_c[0]);
-
-    return calculate(new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(c)), indexReader, query, documentId);
-  }
-  
-  public static float pl2SimilarityRm3(IndexReader indexReader, String query, String documentId) {
-    SearchArgs args = new SearchArgs();
-    float c = Float.valueOf(args.inl2_c[0]);
-
-    Rm3Reranker reranker = reranker();
-    IndexSearcher searcher = searcher(new DFRSimilarity(new BasicModelIn(), new AfterEffectL(), new NormalizationH2(c)), indexReader);
-    Query feedbackQuery = reranker.feedbackQuery(similarityInBody(query), rerankerContext(searcher, query));
-
-    return calculate(searcher, feedbackQuery, documentId);
-  }
-
-  public static float qlSimilarity(IndexReader indexReader, String query, String documentId) {
-    SearchArgs args = new SearchArgs();
-    float mu = Float.valueOf(args.mu[0]);
-
-    return calculate(new LMDirichletSimilarity(mu), indexReader, query, documentId);
-  }
-
-  public static float qlSimilarityRm3(IndexReader indexReader, String query, String documentId) {
-    SearchArgs args = new SearchArgs();
-    float mu = Float.valueOf(args.mu[0]);
-
-    Rm3Reranker reranker = reranker();
-    IndexSearcher searcher = searcher(new LMDirichletSimilarity(mu), indexReader);
-    Query feedbackQuery = reranker.feedbackQuery(similarityInBody(query), rerankerContext(searcher, query));
-
-    return calculate(searcher, feedbackQuery, documentId);
-  }
-
-  public static float calculate(Similarity similarity, IndexReader indexReader, String query, String documentId) {
+  public float calculate(Similarity similarity, String query, String documentId) {
     return calculate(searcher(similarity, indexReader), query, documentId);
   }
   
-  public static float calculate(IndexSearcher searcher, String query, String documentId) {
+  public float calculate(IndexSearcher searcher, String query, String documentId) {
     return calculate(searcher, similarityInBody(query), documentId);
   }
 
@@ -158,24 +148,39 @@ public class DocumentSimilarityScore {
     return new TermQuery(new Term(LuceneDocumentGenerator.FIELD_ID, documentId));
   }
 
-  private static Query similarityInBody(String queryString) {
-    return new BagOfWordsQueryGenerator().buildQuery(FIELD_BODY, new SearchArgs().analyzer(), queryString);
+  private Query similarityInBody(String queryString) {
+    return new BagOfWordsQueryGenerator().buildQuery(FIELD_BODY, args.analyzer(), queryString);
   }
   
-  private static Rm3Reranker reranker() {
-    SearchArgs args = new SearchArgs();
-    int fbTerms = Integer.valueOf(args.rm3_fbTerms[0]);
-    int fbDocs = Integer.valueOf(args.rm3_fbDocs[0]);
-    float originalQueryWeight = Float.valueOf(args.rm3_originalQueryWeight[0]);
+  private Rm3Reranker reranker() {
+    int fbTerms = uniqueInt(args.rm3_fbTerms);
+    int fbDocs = uniqueInt(args.rm3_fbDocs);
+    float originalQueryWeight = uniqueFloat(args.rm3_originalQueryWeight);
     
     return new Rm3Reranker(args.analyzer(), LuceneDocumentGenerator.FIELD_BODY, fbTerms, fbDocs, originalQueryWeight, args.rm3_outputQuery);
   }
   
-  private static RerankerContext<?> rerankerContext(IndexSearcher searcher, String query) {
+  private RerankerContext<?> rerankerContext(IndexSearcher searcher, String query) {
     try {
-      return new RerankerContext<>(searcher, null, null, null, query, null, null, new SearchArgs());
+      return new RerankerContext<>(searcher, null, null, null, query, null, null, args);
 	} catch (IOException e) {
       throw new RuntimeException(e);
 	}
+  }
+  
+  private static int uniqueInt(String[] choices) {
+    return Integer.valueOf(uniqueElementOfFail(choices));
+  }
+  
+  private static float uniqueFloat(String[] choices) {
+    return Float.valueOf(uniqueElementOfFail(choices));
+  }
+  
+  private static String uniqueElementOfFail(String[] choices) {
+    if(choices.length != 1) {
+      throw new RuntimeException("Cant extract unique element from array of length " + choices.length);
+    }
+    
+    return choices[0];
   }
 }
