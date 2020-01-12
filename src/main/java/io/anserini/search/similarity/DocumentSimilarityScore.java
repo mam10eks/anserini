@@ -3,7 +3,10 @@ package io.anserini.search.similarity;
 import static io.anserini.index.generator.LuceneDocumentGenerator.FIELD_BODY;
 
 import java.io.IOException;
+import java.nio.file.Paths;
 
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -20,6 +23,7 @@ import org.apache.lucene.search.similarities.DFRSimilarity;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
 import org.apache.lucene.search.similarities.NormalizationH2;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.store.FSDirectory;
 
 import io.anserini.index.generator.LuceneDocumentGenerator;
 import io.anserini.rerank.RerankerContext;
@@ -112,7 +116,7 @@ public class DocumentSimilarityScore {
       .add(query, BooleanClause.Occur.MUST)
       .build();
 
-    return retrieveScoreOrFail(searcher, scoreForDoc);
+    return retrieveScoreOrFail(searcher, scoreForDoc, documentId);
   }
 
   private static IndexSearcher searcher(Similarity similarity, IndexReader reader) {
@@ -122,23 +126,28 @@ public class DocumentSimilarityScore {
     return ret;
   }
 
-  private static float retrieveScoreOrFail(IndexSearcher searcher, Query query) {
+  private static float retrieveScoreOrFail(IndexSearcher searcher, Query query, String docId) {
     try {
-      return retrieveScore(searcher, query);
+      return retrieveScore(searcher, query, docId);
     } catch(IOException e) {
       throw new RuntimeException(e);
     }
   }
   
-  private static float retrieveScore(IndexSearcher searcher, Query query) throws IOException {
+  private static float retrieveScore(IndexSearcher searcher, Query query, String docId) throws IOException {
     TopDocs ret = searcher.search(query, 10);
 
     if(ret.scoreDocs.length == 0) {
       return 0;
+    } else if (ret.scoreDocs.length == 1) {
+      return ret.scoreDocs[0].score;
     }
+    
+    Document firstDoc = searcher.getIndexReader().document(ret.scoreDocs[0].doc);
+    String actualId = firstDoc.get(LuceneDocumentGenerator.FIELD_ID);
 
-    if(ret.scoreDocs.length != 1) {
-      throw new RuntimeException("Fix this " + ret.scoreDocs.length);
+    if(docId == null || !docId.equals(actualId)) {
+      throw new RuntimeException("I expected a document with id '" + docId + "', but got '" + actualId + "'.");
     }
 
     return ret.scoreDocs[0].score;
@@ -182,5 +191,11 @@ public class DocumentSimilarityScore {
     }
     
     return choices[0];
+  }
+  
+  public static void main(String[] args) throws Exception {
+    IndexReader reader = DirectoryReader.open(FSDirectory.open(Paths.get("/home/maik/workspace/web-search-axiomatic-reranking/axiomatic-explainability/experiments/robust04/lucene-index.robust04.pos+docvectors+rawdocs+transformedDocs")));
+
+    System.out.println(new DocumentSimilarityScore(reader).bm25Similarity("intern organ crime", "FBIS3-1638"));
   }
 }
