@@ -29,7 +29,7 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
 
   private final Map<String, Integer> documentTextToDocumentId = new HashMap<>();
   
-  private final double delta = 1e-5;
+  private final double delta = 1e-3;
   
   @Before
   public void setup() throws IOException {
@@ -196,6 +196,16 @@ public class DocumentSimilarityScoreTest extends BaseFeatureExtractorTest<String
     Assert.assertEquals(0.0f, sim().qlSimilarityRm3("cat", idOf(DOC_2)), delta);
     Assert.assertEquals(0.0f, sim().qlSimilarityRm3("dog", idOf(DOC_3)), delta);
     Assert.assertEquals(0.000997f, sim().qlSimilarityRm3("dog", idOf(DOC_4)), delta);
+  }
+  
+  @Test
+  public void multipleSameDocumentsAreFineInCaseOfDuplicates() {
+    Assert.assertEquals(0.0f, sim().qlSimilarityRm3("cat", idOf(DOC_5)), delta);
+    Assert.assertEquals(0.0f, sim().qlSimilarityRm3("cat", idOf(DOC_6)), delta);
+    Assert.assertEquals(0.002f, sim().qlSimilarityRm3("animal", idOf(DOC_5)), delta);
+    Assert.assertEquals(0.002f, sim().qlSimilarityRm3("animal", idOf(DOC_6)), delta);
+    Assert.assertEquals(0.002f, sim().qlSimilarityRm3("human animal", idOf(DOC_5)), delta);
+    Assert.assertEquals(0.002f, sim().qlSimilarityRm3("human animal", idOf(DOC_6)), delta);
   }
   
   private DocumentSimilarityScore sim() {

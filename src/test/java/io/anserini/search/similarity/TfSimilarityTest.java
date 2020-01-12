@@ -26,9 +26,11 @@ public class TfSimilarityTest extends BaseFeatureExtractorTest<String> {
     DOC_1 = "dog cat dog cat cat",
     DOC_2 = "cat horse rabbit rat rabbit",
     DOC_3 = "cat fish horse",
-    DOC_4 = "dog cat";
+    DOC_4 = "dog cat",
+    DOC_5 = "animal human",
+    DOC_6 = "animal human";
   
-  public static List<String> DOCUMENTS = Arrays.asList(DOC_1, DOC_2, DOC_3, DOC_4);
+  public static List<String> DOCUMENTS = Arrays.asList(DOC_1, DOC_2, DOC_3, DOC_4, DOC_5, DOC_6);
 
   @Before
   public void setup() throws IOException {
