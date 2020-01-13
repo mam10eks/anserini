@@ -57,6 +57,10 @@
       <id>jitpack.io</id>
       <url>https://jitpack.io</url>
     </repository>
+    <repository>
+      <id>webis</id>
+      <url>https://repo.webis.de/artifactory/libs-release</url>
+    </repository>
   </repositories>
 
   <distributionManagement>
@@ -380,6 +384,11 @@
       <groupId>org.wikidata.wdtk</groupId>
       <artifactId>wdtk-dumpfiles</artifactId>
       <version>0.10.0</version>
+    </dependency>
+    <dependency>
+      <groupId>de.webis.corpora</groupId>
+      <artifactId>webis-uuid</artifactId>
+      <version>1.0</version>
     </dependency>
   </dependencies>
 </project>
