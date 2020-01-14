@@ -390,5 +390,10 @@
       <artifactId>webis-uuid</artifactId>
       <version>1.0</version>
     </dependency>
+    <dependency>
+      <groupId>de.webis.aitools</groupId>
+      <artifactId>aitools4-aq-web-page-content-extraction</artifactId>
+      <version>1.0</version>
+    </dependency>
   </dependencies>
 </project>
