@@ -28,3 +28,4 @@ src/main/resources/topics-and-qrels/qrels.disk12.all.txt
 src/main/resources/topics-and-qrels/qrels.gov2.all.txt
 src/main/resources/topics-and-qrels/qrels.mb11.all.txt
 src/main/resources/topics-and-qrels/qrels.mb13.all.txt
+.settings

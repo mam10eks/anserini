@@ -3,6 +3,8 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -55,6 +57,8 @@ public class App {
 				insertDocument(id);
 			}
 		}
+		
+		createFeatureVectors();
 	}
 
 	private static void insertDocument(String id) throws Exception {
@@ -160,18 +164,56 @@ public class App {
 		return Boolean.TRUE;
 	}
 
+	@SuppressWarnings({"rawtypes", "unchecked"})
 	private static Set<String> documentIds() throws Exception {
 		Set<String> ret = new HashSet<>();
-		for (Map<String, Map<String, String>> queryToDocToJudgment : taskToTopicToDocumentToJudgment().values()) {
-			queryToDocToJudgment.values().forEach(i -> i.keySet().forEach(ret::add));
+		for (Map<String, Map<String, Object>> queryToDocToJudgment : taskToTopicToDocumentToJudgment().values()) {
+			for(Map<String, Object> a: queryToDocToJudgment.values()) {
+				Object bla = ((Map) a).get("documentToJudgment");
+				Map<String, String> docsToJudgments = (Map) bla;
+				ret.addAll(docsToJudgments.keySet());
+			}
 		}
 
 		return ret;
 	}
-
-	private static Map<String, Map<String, Map<String, String>>> taskToTopicToDocumentToJudgment() throws Exception {
+	
+	@SuppressWarnings("rawtypes")
+	private static Map<String, Map<String, Map<String, Double>>> createFeatureVectors() throws Exception {
+		Map<String, Map<String, Map<String, Double>>> ret = new HashMap<>();
+		
+		for (Map<String, Map<String, Object>> queryToDocToJudgment : taskToTopicToDocumentToJudgment().values()) {
+			for(Map<String, Object> a: queryToDocToJudgment.values()) {
+				String topicNumber = (String) a.get("topicNumber");
+				String topicQuery = (String) a.get("topicQuery");
+				if(ret.containsKey(topicNumber)) {
+					throw new RuntimeException("FIX THIS");
+				}
+				Map<String, Map<String, Double>> results = new HashMap<>();
+				Map<String, String> documentToJudgments = (Map)(a.get("documentToJudgment"));
+				for(String docId: documentToJudgments.keySet()) {
+					results.put(docId, calculateFeaturesForDocument(topicQuery, docId));
+				}
+				
+				ret.put(topicNumber, results);
+			}
+		}
+		
+		return ret;
+	}
+	
+	private static Map<String, Double> calculateFeaturesForDocument(String query, String documentId) {
+		for(String indices : Arrays.asList("body", "main-content", "title", "anchor")) {
+			
+		}
+		System.out.println("Calculate scores for query '" + query + "' for doc '" + documentId + "'.");
+		
+		return null;
+	}
+	
+	private static Map<String, Map<String, Map<String, Object>>> taskToTopicToDocumentToJudgment() throws Exception {
 		return new ObjectMapper().readValue(App.class.getResourceAsStream("/clueweb.json"),
-				new TypeReference<Map<String, Map<String, Map<String, String>>>>() {
+				new TypeReference<Map<String, Map<String, Map<String, Object>>>>() {
 				});
 	}
 }
