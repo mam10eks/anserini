@@ -1,4 +1,5 @@
 package io.anserini.index;
+import java.io.File;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -6,6 +7,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,28 +45,46 @@ import io.anserini.index.IndexArgs;
 import io.anserini.index.generator.JsoupGenerator;
 import io.anserini.index.generator.LuceneDocumentGenerator;
 import io.anserini.search.similarity.AccurateBM25Similarity;
+import io.anserini.search.similarity.DocumentSimilarityScore;
 
 /**
  * Hello world!
  *
  */
 public class App {
-	private static String INDEX = "/mnt/ceph/storage/data-in-progress/kibi9872/clueweb09-small/lucene-index.cw09b.pos+docvectors+rawdocs";
+	private static String INDEX_BASE_DIR = "/mnt/ceph/storage/data-in-progress/kibi9872/clueweb09-small/";
 
+	// FIXME ADD anchor
+	private static String 	FIELD_BODY = "body",
+							FIELD_MAIN_CONTENT = "main-content",
+							FIELD_TITLE = "title";
+	
+	private static List<String> FIELDS = Arrays.asList(FIELD_BODY, FIELD_MAIN_CONTENT, FIELD_TITLE);
+	
+	private static Map<String, String> FIELD_TO_INDSX = Map.of(
+			FIELD_BODY, "lucene-index.cw09b.pos+docvectors", 
+			FIELD_MAIN_CONTENT, "lucene-index.cw09b-main-content.pos+docvectors",
+			FIELD_TITLE, "lucene-index.cw09b-titles.pos+docvectors");
+	
+	private static String RESULT_FILE = "feature-vectors.jsonl";
+	
 	public static void main(String[] args) throws Exception {
+//		indexMissingDocuments();
+		new ObjectMapper().writeValue(new File(RESULT_FILE), createFeatureVectors());
+	}
+	
+	static void insertMissingDocuments() throws Exception {
 		for (String id : documentIds()) {
-			if (!documentIsInIndex(Paths.get(INDEX), id)) {
+			if (!documentIsInIndex(indexPathForField(null), id)) {
 				insertDocument(id);
 			}
 		}
-		
-		createFeatureVectors();
 	}
 
 	private static void insertDocument(String id) throws Exception {
 		System.out.println("Insert document" + id);
 		String body = documentText(id);
-		IndexWriter writer = indexWriter();
+		IndexWriter writer = indexWriter(null);
 		JsoupGenerator s = new JsoupGenerator();
 		@SuppressWarnings("unchecked")
 		Document doc = s.createDocument(new SourceDocument() {
@@ -89,9 +109,9 @@ public class App {
 		writer.close();
 	}
 
-	private static IndexWriter indexWriter() throws Exception {
+	private static IndexWriter indexWriter(String field) throws Exception {
 		IndexArgs args = new IndexArgs();
-		final Directory dir = FSDirectory.open(Paths.get(INDEX));
+		final Directory dir = FSDirectory.open(indexPathForField(field));
 		final CJKAnalyzer chineseAnalyzer = new CJKAnalyzer();
 		final ArabicAnalyzer arabicAnalyzer = new ArabicAnalyzer();
 		final FrenchAnalyzer frenchAnalyzer = new FrenchAnalyzer();
@@ -179,8 +199,8 @@ public class App {
 	}
 	
 	@SuppressWarnings("rawtypes")
-	private static Map<String, Map<String, Map<String, Double>>> createFeatureVectors() throws Exception {
-		Map<String, Map<String, Map<String, Double>>> ret = new HashMap<>();
+	private static Map<String, Map<String, Map<String, Float>>> createFeatureVectors() throws Exception {
+		Map<String, Map<String, Map<String, Float>>> ret = new HashMap<>();
 		
 		for (Map<String, Map<String, Object>> queryToDocToJudgment : taskToTopicToDocumentToJudgment().values()) {
 			for(Map<String, Object> a: queryToDocToJudgment.values()) {
@@ -189,7 +209,7 @@ public class App {
 				if(ret.containsKey(topicNumber)) {
 					throw new RuntimeException("FIX THIS");
 				}
-				Map<String, Map<String, Double>> results = new HashMap<>();
+				Map<String, Map<String, Float>> results = new HashMap<>();
 				Map<String, String> documentToJudgments = (Map)(a.get("documentToJudgment"));
 				for(String docId: documentToJudgments.keySet()) {
 					results.put(docId, calculateFeaturesForDocument(topicQuery, docId));
@@ -202,18 +222,46 @@ public class App {
 		return ret;
 	}
 	
-	private static Map<String, Double> calculateFeaturesForDocument(String query, String documentId) {
-		for(String indices : Arrays.asList("body", "main-content", "title", "anchor")) {
-			
-		}
+	private static Map<String, Float> calculateFeaturesForDocument(String query, String documentId) throws Exception {
+		Map<String, Float> ret = new HashMap<>();
 		System.out.println("Calculate scores for query '" + query + "' for doc '" + documentId + "'.");
 		
-		return null;
+		for(String field : FIELDS) {
+			ret.putAll(calculateFeaturesForDocumentOnField(query, documentId, field));
+		}
+		
+		return ret;
+	}
+	
+	private static Map<String, Float> calculateFeaturesForDocumentOnField(String query, String documentId, String field) throws Exception {
+		IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPathForField(field)));
+		DocumentSimilarityScore sim = new DocumentSimilarityScore(reader);
+				
+		return Map.of(
+			field + "-bm25-similarity", sim.bm25Similarity(query, documentId),
+			field + "-bm25-similarity-rm3", sim.bm25SimilarityRm3(query, documentId),
+
+			field + "-pl2-similarity", sim.pl2Similarity(query, documentId),
+			field + "-pl2-similarity-rm3", sim.pl2SimilarityRm3(query, documentId),
+
+			field + "-ql-similarity", sim.qlSimilarity(query, documentId),
+			field + "-ql-similarity-rm3", sim.qlSimilarityRm3(query, documentId),
+
+			field + "-tf-idf-similarity", sim.tfIdfSimilarity(query, documentId),
+			field + "-tf-idf-similarity-rm3", sim.tfIdfSimilarityRm3(query, documentId),
+			
+			field + "-tf-similarity", sim.tfSimilarity(query, documentId),
+			field + "-tf-similarity-rm3", sim.tfSimilarityRm3(query, documentId)
+		);
 	}
 	
 	private static Map<String, Map<String, Map<String, Object>>> taskToTopicToDocumentToJudgment() throws Exception {
 		return new ObjectMapper().readValue(App.class.getResourceAsStream("/clueweb.json"),
 				new TypeReference<Map<String, Map<String, Map<String, Object>>>>() {
 				});
+	}
+	
+	private static Path indexPathForField(String field) {
+		return Paths.get(INDEX_BASE_DIR + FIELD_TO_INDSX.get(field));
 	}
 }
