@@ -66,13 +66,23 @@ public class App {
 			FIELD_MAIN_CONTENT, "lucene-index.cw09b-main-content.pos+docvectors",
 			FIELD_TITLE, "lucene-index.cw09b-titles.pos+docvectors");
 	
+	private static final Map<String, DocumentSimilarityScore> docSimilarityScores = new HashMap<>();
+	
 	private static String RESULT_FILE = "feature-vectors.jsonl";
 	
 	public static void main(String[] args) throws Exception {
 //		indexMissingDocuments();
+		initializeSimilarityReaders();
 		new ObjectMapper().writeValue(new File(RESULT_FILE), createFeatureVectors());
 	}
 	
+	private static void initializeSimilarityReaders() throws Exception {
+		for(String field : FIELDS) {
+			IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPathForField(field)));
+			docSimilarityScores.put(field, new DocumentSimilarityScore(reader));
+		}
+	}
+
 	static void insertMissingDocuments() throws Exception {
 		for (String id : documentIds()) {
 			if (!documentIsInIndex(indexPathForField(null), id)) {
@@ -234,10 +244,9 @@ public class App {
 	}
 	
 	private static Map<String, Float> calculateFeaturesForDocumentOnField(String query, String documentId, String field) throws Exception {
-		IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPathForField(field)));
-		DocumentSimilarityScore sim = new DocumentSimilarityScore(reader);
-				
-		return Map.of(
+		DocumentSimilarityScore sim = docSimilarityScores.get(field);
+		Map<String, Float> ret = new HashMap<>();
+		ret.putAll(Map.of(
 			field + "-bm25-similarity", sim.bm25Similarity(query, documentId),
 			field + "-bm25-similarity-rm3", sim.bm25SimilarityRm3(query, documentId),
 
@@ -246,13 +255,29 @@ public class App {
 
 			field + "-ql-similarity", sim.qlSimilarity(query, documentId),
 			field + "-ql-similarity-rm3", sim.qlSimilarityRm3(query, documentId),
-
+			
+			field + "-qljm-similarity", sim.qljmSimilarity(query, documentId),
+			field + "-qljm-similarity-rm3", sim.qljmSimilarityRm3(query, documentId)
+		));
+		
+		ret.putAll(Map.of(
+			field + "-spl-similarity", sim.splSimilarity(query, documentId),
+			field + "-spl-similarity-rm3", sim.splSimilarityRm3(query, documentId),
+	
+			field + "-f2exp-similarity", sim.f2expSimilarity(query, documentId),
+			field + "-f2exp-similarity-rm3", sim.f2expSimilarityRm3(query, documentId),
+			
+			field + "-f2log-similarity", sim.f2logSimilarity(query, documentId),
+			field + "-f2log-similarity-rm3", sim.f2logSimilarityRm3(query, documentId),
+			
 			field + "-tf-idf-similarity", sim.tfIdfSimilarity(query, documentId),
 			field + "-tf-idf-similarity-rm3", sim.tfIdfSimilarityRm3(query, documentId),
 			
 			field + "-tf-similarity", sim.tfSimilarity(query, documentId),
 			field + "-tf-similarity-rm3", sim.tfSimilarityRm3(query, documentId)
-		);
+		));
+		
+		return ret;
 	}
 	
 	private static Map<String, Map<String, Map<String, Object>>> taskToTopicToDocumentToJudgment() throws Exception {

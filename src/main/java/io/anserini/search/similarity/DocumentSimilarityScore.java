@@ -16,11 +16,17 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.AfterEffectL;
+import org.apache.lucene.search.similarities.AxiomaticF2EXP;
+import org.apache.lucene.search.similarities.AxiomaticF2LOG;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.BasicModelIn;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
+import org.apache.lucene.search.similarities.DistributionSPL;
+import org.apache.lucene.search.similarities.IBSimilarity;
 import org.apache.lucene.search.similarities.LMDirichletSimilarity;
+import org.apache.lucene.search.similarities.LMJelinekMercerSimilarity;
+import org.apache.lucene.search.similarities.LambdaDF;
 import org.apache.lucene.search.similarities.NormalizationH2;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.FSDirectory;
@@ -92,6 +98,54 @@ public class DocumentSimilarityScore {
   
   private LMDirichletSimilarity ql() {
     return new LMDirichletSimilarity(uniqueFloat(args.mu));
+  }
+  
+  public float qljmSimilarity(String query, String documentId) {
+    return calculate(qljm(), query, documentId);
+  }
+
+  public float qljmSimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(qljm(), query, documentId);
+  }
+  
+  private LMJelinekMercerSimilarity qljm() {
+	  return new LMJelinekMercerSimilarity(uniqueFloat(args.qljm_lambda));
+  }
+  
+  public float splSimilarity(String query, String documentId) {
+    return calculate(spl(), query, documentId);
+  }
+
+  public float splSimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(spl(), query, documentId);
+  }
+  
+  private IBSimilarity spl() {
+	 return new IBSimilarity(new DistributionSPL(), new LambdaDF(),  new NormalizationH2(uniqueFloat(args.spl_c)));
+  }
+  
+  public float f2expSimilarity(String query, String documentId) {
+    return calculate(f2exp(), query, documentId);
+  }
+
+  public float f2expSimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(f2exp(), query, documentId);
+  }
+  
+  private AxiomaticF2EXP f2exp() {
+    return new AxiomaticF2EXP(uniqueFloat(args.f2exp_s));
+  }
+  
+  public float f2logSimilarity(String query, String documentId) {
+    return calculate(f2log(), query, documentId);
+  }
+
+  public float f2logSimilarityRm3(String query, String documentId) {
+    return calculateWithRm3(f2log(), query, documentId);
+  }
+
+  private AxiomaticF2LOG f2log() {
+    return new AxiomaticF2LOG(uniqueFloat(args.f2log_s));
   }
 
   public float calculateWithRm3(Similarity similarity, String query, String documentId) {
