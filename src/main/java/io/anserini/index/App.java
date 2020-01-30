@@ -94,6 +94,8 @@ public class App {
 				}
 			}
 		}
+		
+		throw new RuntimeException("Test-Only");
 	}
 
 	private static void insertDocument(String id) throws Exception {
