@@ -28,6 +28,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
@@ -44,7 +45,9 @@ import io.anserini.analysis.TweetAnalyzer;
 import io.anserini.collection.SourceDocument;
 import io.anserini.index.IndexArgs;
 import io.anserini.index.generator.JsoupGenerator;
+import io.anserini.index.generator.JsoupTitleGenerator;
 import io.anserini.index.generator.LuceneDocumentGenerator;
+import io.anserini.index.generator.PotthastJerichoMainContentExtractor;
 import io.anserini.search.similarity.AccurateBM25Similarity;
 import io.anserini.search.similarity.DocumentSimilarityScore;
 
@@ -86,55 +89,69 @@ public class App {
 
 	static void insertMissingDocuments() throws Exception {
 		for (String field : FIELDS) {
-			List<String> idsToAdd = new ArrayList<>();
+			Set<String> idsToAdd = new HashSet<>();
 			IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPathForField(field)));
 			IndexSearcher searcher = new IndexSearcher(reader);
 			
 			for (String id : documentIds()) {
 				if (!documentIsInIndex(searcher, id)) {
 					idsToAdd.add(id);
-					System.out.println("Add for indexing document " + id + " to field " + field);
-//					insertDocument(id);
-				} else {
-					System.out.println("Document already indexed: " + id);
 				}
 			}
-			
+
 			System.out.println("Index documents for field " + idsToAdd.size() + " to field " + field);
+			insertDocuments(new ArrayList<>(idsToAdd), indexWriter(field, IndexWriterConfig.OpenMode.APPEND), documentGenerator(field));
 		}
 		
 		throw new RuntimeException("Test-Only");
 	}
 
-	private static void insertDocument(String id) throws Exception {
-		System.out.println("Insert document" + id);
-		String body = documentText(id);
-		IndexWriter writer = indexWriter(null);
-		JsoupGenerator s = new JsoupGenerator();
-		@SuppressWarnings("unchecked")
-		Document doc = s.createDocument(new SourceDocument() {
-			@Override
-			public boolean indexable() {
-				return true;
+	private static void insertDocuments(List<String> ids, IndexWriter writer, LuceneDocumentGenerator generator) throws Exception {
+		for(String id : ids) {
+			try {
+				String body = documentText(id);
+				System.out.println("Insert document" + id);
+				
+				@SuppressWarnings("unchecked")
+				Document doc = generator.createDocument(new SourceDocument() {
+					@Override
+					public boolean indexable() {
+						return true;
+					}
+					
+					@Override
+					public String id() {
+						return id;
+					}
+					
+					@Override
+					public String content() {
+						return body;
+					}
+				});
+				
+				writer.addDocument(doc);
+			} catch (Exception e) {
+				continue;
 			}
-			
-			@Override
-			public String id() {
-				return id;
-			}
-			
-			@Override
-			public String content() {
-				return body;
-			}
-		});
-		
-		writer.addDocument(doc);
+		}
 		
 		writer.close();
 	}
 
-	private static IndexWriter indexWriter(String field) throws Exception {
+	private static LuceneDocumentGenerator documentGenerator(String field) {
+		if(FIELD_BODY.equals(field)) {
+			return new JsoupGenerator();
+		} else if(FIELD_MAIN_CONTENT.equals(field)) {
+			return new PotthastJerichoMainContentExtractor();
+		} else if(FIELD_TITLE.equals(field)) {
+			return new JsoupTitleGenerator();
+		}
+		
+		throw new RuntimeException("Can not handle '" + field +"'.");
+	}
+	
+	private static IndexWriter indexWriter(String field, OpenMode openMode) throws Exception {
 		IndexArgs args = new IndexArgs();
 		final Directory dir = FSDirectory.open(indexPathForField(field));
 		final CJKAnalyzer chineseAnalyzer = new CJKAnalyzer();
@@ -175,7 +192,7 @@ public class App {
 		} else {
 			config.setSimilarity(new BM25Similarity());
 		}
-		config.setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+		config.setOpenMode(openMode);
 		config.setRAMBufferSizeMB(args.memorybufferSize);
 		config.setUseCompoundFile(false);
 		config.setMergeScheduler(new ConcurrentMergeScheduler());
