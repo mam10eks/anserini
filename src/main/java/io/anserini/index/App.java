@@ -71,7 +71,7 @@ public class App {
 	private static String RESULT_FILE = "feature-vectors.jsonl";
 	
 	public static void main(String[] args) throws Exception {
-//		indexMissingDocuments();
+		insertMissingDocuments();
 		initializeSimilarityReaders();
 		new ObjectMapper().writeValue(new File(RESULT_FILE), createFeatureVectors());
 	}
@@ -84,9 +84,14 @@ public class App {
 	}
 
 	static void insertMissingDocuments() throws Exception {
-		for (String id : documentIds()) {
-			if (!documentIsInIndex(indexPathForField(null), id)) {
-				insertDocument(id);
+		for (String field : FIELDS) {
+			for (String id : documentIds()) {
+				if (!documentIsInIndex(indexPathForField(field), id)) {
+					System.out.println("Index document " + id + " to field " + field);
+//					insertDocument(id);
+				} else {
+					System.out.println("Document already indexed: " + id);
+				}
 			}
 		}
 	}
@@ -248,34 +253,27 @@ public class App {
 		Map<String, Float> ret = new HashMap<>();
 		ret.putAll(Map.of(
 			field + "-bm25-similarity", sim.bm25Similarity(query, documentId),
-			field + "-bm25-similarity-rm3", sim.bm25SimilarityRm3(query, documentId),
-
+			field + "-f2exp-similarity", sim.f2expSimilarity(query, documentId),
+			field + "-spl-similarity", sim.splSimilarity(query, documentId),
 			field + "-pl2-similarity", sim.pl2Similarity(query, documentId),
-			field + "-pl2-similarity-rm3", sim.pl2SimilarityRm3(query, documentId),
-
 			field + "-ql-similarity", sim.qlSimilarity(query, documentId),
-			field + "-ql-similarity-rm3", sim.qlSimilarityRm3(query, documentId),
-			
 			field + "-qljm-similarity", sim.qljmSimilarity(query, documentId),
-			field + "-qljm-similarity-rm3", sim.qljmSimilarityRm3(query, documentId)
+			field + "-f2log-similarity", sim.f2logSimilarity(query, documentId),
+			field + "-tf-idf-similarity", sim.tfIdfSimilarity(query, documentId),
+			field + "-tf-similarity", sim.tfSimilarity(query, documentId)
 		));
 		
-		ret.putAll(Map.of(
-			field + "-spl-similarity", sim.splSimilarity(query, documentId),
-			field + "-spl-similarity-rm3", sim.splSimilarityRm3(query, documentId),
-	
-			field + "-f2exp-similarity", sim.f2expSimilarity(query, documentId),
-			field + "-f2exp-similarity-rm3", sim.f2expSimilarityRm3(query, documentId),
-			
-			field + "-f2log-similarity", sim.f2logSimilarity(query, documentId),
-			field + "-f2log-similarity-rm3", sim.f2logSimilarityRm3(query, documentId),
-			
-			field + "-tf-idf-similarity", sim.tfIdfSimilarity(query, documentId),
-			field + "-tf-idf-similarity-rm3", sim.tfIdfSimilarityRm3(query, documentId),
-			
-			field + "-tf-similarity", sim.tfSimilarity(query, documentId),
-			field + "-tf-similarity-rm3", sim.tfSimilarityRm3(query, documentId)
-		));
+//		ret.putAll(Map.of(
+//			field + "-bm25-similarity-rm3", sim.bm25SimilarityRm3(query, documentId),
+//			field + "-spl-similarity-rm3", sim.splSimilarityRm3(query, documentId),
+//			field + "-pl2-similarity-rm3", sim.pl2SimilarityRm3(query, documentId),
+//			field + "-f2exp-similarity-rm3", sim.f2expSimilarityRm3(query, documentId),
+//			field + "-ql-similarity-rm3", sim.qlSimilarityRm3(query, documentId),
+//			field + "-f2log-similarity-rm3", sim.f2logSimilarityRm3(query, documentId),
+//			field + "-tf-idf-similarity-rm3", sim.tfIdfSimilarityRm3(query, documentId),
+//			field + "-qljm-similarity-rm3", sim.qljmSimilarityRm3(query, documentId),
+//			field + "-tf-similarity-rm3", sim.tfSimilarityRm3(query, documentId)
+//		));
 		
 		return ret;
 	}
