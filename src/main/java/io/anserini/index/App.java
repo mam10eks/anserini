@@ -4,6 +4,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -71,8 +72,8 @@ public class App {
 	private static String RESULT_FILE = "feature-vectors.jsonl";
 	
 	public static void main(String[] args) throws Exception {
-		insertMissingDocuments();
 		initializeSimilarityReaders();
+		insertMissingDocuments();
 		new ObjectMapper().writeValue(new File(RESULT_FILE), createFeatureVectors());
 	}
 	
@@ -85,14 +86,21 @@ public class App {
 
 	static void insertMissingDocuments() throws Exception {
 		for (String field : FIELDS) {
+			List<String> idsToAdd = new ArrayList<>();
+			IndexReader reader = DirectoryReader.open(FSDirectory.open(indexPathForField(field)));
+			IndexSearcher searcher = new IndexSearcher(reader);
+			
 			for (String id : documentIds()) {
-				if (!documentIsInIndex(indexPathForField(field), id)) {
-					System.out.println("Index document " + id + " to field " + field);
+				if (!documentIsInIndex(searcher, id)) {
+					idsToAdd.add(id);
+					System.out.println("Add for indexing document " + id + " to field " + field);
 //					insertDocument(id);
 				} else {
 					System.out.println("Document already indexed: " + id);
 				}
 			}
+			
+			System.out.println("Index documents for field " + idsToAdd.size() + " to field " + field);
 		}
 		
 		throw new RuntimeException("Test-Only");
@@ -181,9 +189,9 @@ public class App {
 		return IOUtils.toString(new URL(chatNoirUrl), StandardCharsets.UTF_8);
 	}
 
-	private static boolean documentIsInIndex(Path p, String id) throws Exception {
-		IndexReader reader = DirectoryReader.open(FSDirectory.open(p));
-		IndexSearcher searcher = new IndexSearcher(reader);
+	private static boolean documentIsInIndex(IndexSearcher searcher, String id) throws Exception {
+//		IndexReader reader = DirectoryReader.open(FSDirectory.open(p));
+//		IndexSearcher searcher = new IndexSearcher(reader);
 		ScoreDoc[] scoreDocs = searcher.search(new TermQuery(new Term(LuceneDocumentGenerator.FIELD_ID, id)),
 				10).scoreDocs;
 
