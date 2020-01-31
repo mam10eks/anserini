@@ -139,15 +139,20 @@ public class App {
 	}
 
 	private static LuceneDocumentGenerator documentGenerator(String field) {
+		LuceneDocumentGenerator ret = null;
+		
 		if(FIELD_BODY.equals(field)) {
-			return new JsoupGenerator();
+			ret = new JsoupGenerator();
 		} else if(FIELD_MAIN_CONTENT.equals(field)) {
-			return new PotthastJerichoMainContentExtractor();
+			ret = new PotthastJerichoMainContentExtractor();
 		} else if(FIELD_TITLE.equals(field)) {
-			return new JsoupTitleGenerator();
+			ret = new JsoupTitleGenerator();
+		} else {
+			throw new RuntimeException("Can not handle '" + field +"'.");
 		}
 		
-		throw new RuntimeException("Can not handle '" + field +"'.");
+		ret.config(new IndexArgs());
+		return ret;
 	}
 	
 	private static IndexWriter indexWriter(String field, OpenMode openMode) throws Exception {
