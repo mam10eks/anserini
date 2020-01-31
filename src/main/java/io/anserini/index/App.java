@@ -108,34 +108,33 @@ public class App {
 
 	private static void insertDocuments(List<String> ids, IndexWriter writer, LuceneDocumentGenerator generator) throws Exception {
 		for(String id : ids) {
-			try {
-				String body = documentText(id);
-				System.out.println("Insert document" + id);
-				
-				@SuppressWarnings("unchecked")
-				Document doc = generator.createDocument(new SourceDocument() {
-					@Override
-					public boolean indexable() {
-						return true;
-					}
-					
-					@Override
-					public String id() {
-						return id;
-					}
-					
-					@Override
-					public String content() {
-						return body;
-					}
-				});
-				
-				writer.addDocument(doc);
-			} catch (Exception e) {
+			String body = documentTextOrNull(id);
+			if(body == null) {
 				continue;
 			}
+			System.out.println("Insert document" + id);
+				
+			@SuppressWarnings("unchecked")
+			Document doc = generator.createDocument(new SourceDocument() {
+				@Override
+				public boolean indexable() {
+					return true;
+				}
+					
+				@Override
+				public String id() {
+					return id;
+				}
+					
+				@Override
+				public String content() {
+					return body;
+				}
+			});
+				
+			writer.addDocument(doc);
 		}
-		
+		writer.commit();
 		writer.close();
 	}
 
@@ -201,6 +200,14 @@ public class App {
 		return new IndexWriter(dir, config);
 	}
 
+	private static String documentTextOrNull(String id) {
+		try {
+			return documentText(id);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+	
 	private static String documentText(String id) throws Exception {
 		String chatNoirUrl = "https://chatnoir.eu/cache?uuid=" + new WebisUUID("clueweb09").generateUUID(id).toString()
 				+ "&index=cw09&raw";
