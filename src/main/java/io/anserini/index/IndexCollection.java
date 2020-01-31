@@ -107,12 +107,12 @@ public final class IndexCollection {
   // Stored vs. indexed vs. doc values vs. multi-valued vs. ... are controlled via config, rather than code, in Solr.
   private static final List<String> IGNORED_DUPLICATE_FIELDS = Lists.newArrayList(WapoGenerator.WapoField.PUBLISHED_DATE.name);
 
-  public final class Counters {
+  public static final class Counters {
     /**
      * Counter for successfully indexed documents.
      */
     public AtomicLong indexed = new AtomicLong();
-
+    
     /**
      * Counter for empty documents that are not indexed. Empty documents are not necessary errors;
      * it could be the case, for example, that a document is comprised solely of stopwords.

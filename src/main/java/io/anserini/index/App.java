@@ -154,6 +154,8 @@ public class App {
 		IndexArgs args = new IndexArgs();
 		args.storePositions = Boolean.TRUE;
 		ret.config(args);
+		ret.setCounters(new IndexCollection.Counters());
+		
 		return ret;
 	}
 	
