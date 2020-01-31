@@ -151,7 +151,9 @@ public class App {
 			throw new RuntimeException("Can not handle '" + field +"'.");
 		}
 		
-		ret.config(new IndexArgs());
+		IndexArgs args = new IndexArgs();
+		args.storePositions = Boolean.TRUE;
+		ret.config(args);
 		return ret;
 	}
 	
