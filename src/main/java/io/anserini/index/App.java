@@ -131,8 +131,10 @@ public class App {
 					return body;
 				}
 			});
-				
-			writer.addDocument(doc);
+			
+			if(doc != null) {
+				writer.addDocument(doc);
+			}
 		}
 		writer.commit();
 		writer.close();
