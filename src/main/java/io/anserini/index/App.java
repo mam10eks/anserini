@@ -153,6 +153,7 @@ public class App {
 	private static IndexWriter indexWriter(String field, OpenMode openMode) throws Exception {
 		IndexArgs args = new IndexArgs();
 		args.collectionClass = "";
+		args.storeRawDocs = Boolean.FALSE;
 		final Directory dir = FSDirectory.open(indexPathForField(field));
 		final CJKAnalyzer chineseAnalyzer = new CJKAnalyzer();
 		final ArabicAnalyzer arabicAnalyzer = new ArabicAnalyzer();
