@@ -58,15 +58,16 @@ import io.anserini.search.similarity.DocumentSimilarityScore;
 public class App {
 	private static String INDEX_BASE_DIR = "/mnt/ceph/storage/data-in-progress/kibi9872/clueweb09-small/";
 
-	// FIXME ADD anchor
 	private static String 	FIELD_BODY = "body",
 							FIELD_MAIN_CONTENT = "main-content",
-							FIELD_TITLE = "title";
+							FIELD_TITLE = "title",
+							FIELD_ANCHOR = "anchors";
 	
-	private static List<String> FIELDS = Arrays.asList(FIELD_BODY, FIELD_MAIN_CONTENT, FIELD_TITLE);
+	private static List<String> FIELDS = Arrays.asList(FIELD_ANCHOR, FIELD_BODY, FIELD_MAIN_CONTENT, FIELD_TITLE);
 	
-	private static Map<String, String> FIELD_TO_INDSX = Map.of(
+	private static Map<String, String> FIELD_TO_INDEX = Map.of(
 			FIELD_BODY, "lucene-index.cw09b.pos+docvectors", 
+			FIELD_ANCHOR, "lucene-index.cw09b-anchors.pos+docvectors",
 			FIELD_MAIN_CONTENT, "lucene-index.cw09b-main-content.pos+docvectors",
 			FIELD_TITLE, "lucene-index.cw09b-titles.pos+docvectors");
 	
@@ -76,7 +77,7 @@ public class App {
 	
 	public static void main(String[] args) throws Exception {
 		initializeSimilarityReaders();
-		insertMissingDocuments();
+//		insertMissingDocuments();
 		new ObjectMapper().writeValue(new File(RESULT_FILE), createFeatureVectors());
 	}
 	
@@ -332,6 +333,6 @@ public class App {
 	}
 	
 	private static Path indexPathForField(String field) {
-		return Paths.get(INDEX_BASE_DIR + FIELD_TO_INDSX.get(field));
+		return Paths.get(INDEX_BASE_DIR + FIELD_TO_INDEX.get(field));
 	}
 }
